@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<!--
+  Stepwise v1.6: a notebook that checks your maths, line by line.
+  MIT licensed. An independent open-source project, not affiliated with Derive.
+  Everything is in this one file. Needs a network connection for math.js, MathJax and fonts.
+  Solve ▸ and Next step use your own Claude API key (add it under "Claude key"). Solve offline needs no key.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stepwise v1.6: a notebook that checks your maths</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<script>window.MathJax={svg:{fontCache:"none"},startup:{typeset:false}}</script>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.1/math.min.js"></script>
+<style>
+:root{--bg:#eef2f3;--panel:#fbfcfc;--ink:#1d2a3a;--mute:#6b7a89;--line:#d3dde2;--acc:#1f6f8b;--ok:#2f7d4f;--bad:#c2410c;--grid:#dde6ea;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10181f;--panel:#16212a;--ink:#e3ecf2;--mute:#8b9cab;--line:#2a3945;--acc:#5fb3d1;--ok:#5fc08a;--bad:#f08a5d;--grid:#1d2a34}}
+:root[data-theme="dark"]{--bg:#10181f;--panel:#16212a;--ink:#e3ecf2;--mute:#8b9cab;--line:#2a3945;--acc:#5fb3d1;--ok:#5fc08a;--bad:#f08a5d;--grid:#1d2a34}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Figtree,system-ui,sans-serif}
+.app{display:grid;grid-template-columns:200px minmax(0,1fr);gap:12px;padding:12px;min-height:100vh}
+@media(max-width:900px){.app{grid-template-columns:1fr}}
+.side,.work{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;min-width:0}
+h1{font-size:18px;margin:0 0 10px}.ver{font-size:11px;font-weight:400;color:var(--mute);margin-left:4px}
+h2{font-size:13px;margin:0 0 8px;color:var(--mute);font-weight:600}
+button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer}
+button:hover{border-color:var(--acc)}button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.pg{display:block;width:100%;text-align:left;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg.cur{border-color:var(--acc);font-weight:600}
+.title{width:100%;font:600 17px Figtree,sans-serif;border:0;border-bottom:1px solid var(--line);background:none;color:var(--ink);padding:2px 0 8px;margin-bottom:6px}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:0 8px;min-height:42px;border-bottom:1px solid var(--grid)}
+.row input{flex:1;min-width:0;height:42px;border:0;background:none;color:var(--ink);font:400 16px 'JetBrains Mono',monospace}
+.mark{width:22px;text-align:center;font-weight:600;line-height:42px;align-self:flex-start}
+.skip{color:var(--mute)}
+.lk{border:0;background:none;color:var(--acc);padding:0 0 0 4px;text-decoration:underline;font-size:13px;cursor:pointer}
+.tg{display:block;font-size:12.5px;color:var(--mute);margin:2px 0 8px;flex:1}
+.tgrow{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.sf{display:block;font-size:13px;margin:12px 0}.sf input{display:block;width:100%;margin-top:4px;padding:7px 9px;font:14px 'JetBrains Mono',monospace;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px}
+dialog#setd{width:min(520px,94vw)}
+.tm{white-space:nowrap;font-size:12.5px;color:var(--mute);margin-top:2px}.tg input{margin-right:6px}
+.note{flex:1 0 100%;padding:0 0 8px 30px;font-size:13px;line-height:1.4;color:var(--mute)}.note:empty{display:none}
+.sb{align-self:flex-start;display:flex;gap:6px;margin-top:6px}
+.solve{padding:2px 9px;font-size:12px;border-color:var(--acc);color:var(--acc)}
+.col{flex:1;min-width:0}.col input{width:100%}
+.row:not(.edit) input{display:none}
+.ts{min-height:42px;display:flex;align-items:center;font-size:19px;cursor:text;overflow-x:auto;overflow-y:hidden}
+.row.edit .ts{min-height:34px;font-size:17px;opacity:.85}
+.ts mjx-container{margin:0!important}.ts svg{max-width:none}.ok{color:var(--ok)}.bad{color:var(--bad)}
+.msg{flex:1 0 100%;padding:0 0 8px 30px;font-size:13px;line-height:1.4;color:var(--bad)}.msg:empty{display:none}
+.hint{color:var(--mute);font-size:13px;margin:10px 0 0}
+.bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center}
+dialog#guide{width:min(720px,94vw);max-height:84vh;overflow:auto}.gh{margin:14px 0 6px;font-size:13px;font-weight:600;color:var(--mute)}
+.gr{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:6px}.gr .top{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.gr code{font:14px 'JetBrains Mono',monospace;word-break:break-all}.gx{min-height:34px;display:flex;align-items:center;font-size:18px;overflow-x:auto;overflow-y:hidden}.gd{font-size:13px;color:var(--mute)}
+dialog{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;width:min(560px,92vw)}
+textarea{width:100%;height:220px;font:13px 'JetBrains Mono',monospace;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:8px}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <h1>Stepwise <small class="ver">v1.6</small></h1>
+    <div id="pages"></div>
+    <button id="newPage">New page</button>
+  </aside>
+  <main class="work">
+    <input class="title" id="title" aria-label="Page title" placeholder="Untitled page">
+    <div class="tgrow"><label class="tg"><input type="checkbox" id="impl"> Treat y as a function of x (implicit differentiation). Turns on by itself when you write dy/dx or y′.</label><span id="solvedIn" class="tm" aria-live="polite"></span></div>
+    <div class="lines" id="lines"></div>
+    <p class="hint">Write one step per line, like <code>2x+4=10</code> then <code>2x=6</code>. Press Enter for the next step. Click a line to edit it; it typesets as you type. The Solve button beside your last line works out the remaining steps and explains each one. Solve offline does the same with built-in rules and no AI: linear and quadratic equations, cubics and quartics (with exact radical roots when they are not rational), derivatives, many integrals (including by parts with polynomials), limits and simplifying. Each line is checked against the one above it. Calculus works too: <code>d/dx(x^3)</code>, <code>int(2x,x)=x^2+C</code>, <code>int(x,x,0,2)</code>, <code>lim(sin(x)/x,x,0)</code>.</p>
+    <div class="bar" style="margin-top:12px"><button id="tex">Export LaTeX</button><button id="del">Delete page</button><button id="help">Syntax guide</button><button id="settings">Claude key</button></div>
+  </main>
+</div>
+<dialog id="guide"><div class="bar" style="justify-content:space-between"><h2 style="margin:0">How to write each kind of line</h2><button id="gclose">Close</button></div><div id="gbody"></div></dialog>
+<dialog id="setd">
+  <div class="bar" style="justify-content:space-between"><h2 style="margin:0">Connect Claude</h2><button id="sclose">Close</button></div>
+  <p class="gd" id="sintro">Solve ▸ and Next step use Claude. Add your own API key to turn them on. Solve offline never needs a key.</p>
+  <label class="sf">API key<input type="password" id="akey" placeholder="sk-ant-…" autocomplete="off" spellcheck="false"></label>
+  <label class="sf">Model<input id="amodel" list="amodels" placeholder="claude-sonnet-5-5" autocomplete="off" spellcheck="false"><datalist id="amodels"><option value="claude-sonnet-5-5"><option value="claude-haiku-5-5"><option value="claude-opus-5-5"></datalist></label>
+  <label class="tg"><input type="checkbox" id="aremember"> Remember the key on this device (otherwise it is forgotten when you close the tab)</label>
+  <div class="bar" style="margin-top:10px"><button id="asave" class="on">Save</button><button id="atest">Test</button><button id="aclear">Remove key</button></div>
+  <p class="gd" id="astat" aria-live="polite"></p>
+  <p class="gd">Your key is stored only in this browser and is sent only to api.anthropic.com. Anyone who can use this browser can read it, so do not save it on a shared computer. Create a separate key with a spending limit in the Claude Console and delete it if you stop using it. Lines you solve with Claude are sent to Anthropic.</p>
+</dialog>
+<dialog id="dlg"><h2>LaTeX</h2><textarea id="out" readonly></textarea><div class="bar" style="margin:8px 0 0"><button id="copy">Copy</button><button id="close">Close</button></div></dialog>
+
+<script>
+const $=id=>document.getElementById(id);
+let S={cur:0,pages:[{title:'',lines:['']}]};
+try{const s=localStorage.getItem('stepwise');if(s)S=JSON.parse(s)}catch(e){}
+const save=()=>{try{localStorage.setItem('stepwise',JSON.stringify(S))}catch(e){}};
+const P=()=>S.pages[S.cur];
+
+/* ---- checker: numeric equivalence of consecutive steps ---- */
+const KNOWN=new Set(['pi','inf','int','lim','ev','sin','cos','tan','sec','csc','cot','exp','log','abs','gcd','lcm','mod','min','max','sum']);
+const clean0=s=>s.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-').replace(/\\cdot/g,'*')
+  .replace(/d2([a-zA-Z])\/d([a-zA-Z])2(?![a-zA-Z0-9_(])/g,(m,a,b)=>`d2${a}_d${b}2`)
+  .replace(/(?<![a-zA-Z_])d([a-zA-Z])\/d([a-zA-Z])(?![a-zA-Z0-9_(])/g,(m,a,b)=>`d${a}_d${b}`)
+  .replace(/([a-zA-Z])''/g,(m,a)=>`d2${a}_dx2`).replace(/([a-zA-Z])'/g,(m,a)=>`d${a}_dx`)
+  .replace(/\bln\(/g,'log(')
+  .replace(/(?<![A-Za-z_])(?<!d\/)([A-Za-z]{2,3})(?![A-Za-z0-9_(])/g,m=>KNOWN.has(m)?m:m.split('').join(' '));
+function fixTrig(s){
+  const re=/\b(sin|cos|tan|sec|csc|cot|sinh|cosh|tanh)(?![A-Za-z0-9_])(?:\s*\^\s*(-?\d+))?/g;let m,out='',last=0;
+  while((m=re.exec(s))){
+    let j=m.index+m[0].length;while(s[j]===' ')j++;
+    let arg,end;
+    if(s[j]==='('){if(!m[2])continue;const c=callAt(s,j);arg=s.slice(j+1,c.end);end=c.end+1}
+    else{const mm=/^(\d*\.?\d*\s*(?:pi(?![A-Za-z])|[A-Za-z](?![A-Za-z])))/.exec(s.slice(j));if(!mm||!mm[0].trim())continue;arg=mm[0].replace(/\s+/g,'');end=j+mm[0].length}
+    out+=s.slice(last,m.index)+`${m[1]}(${arg})`+(m[2]?`^${m[2]}`:'');last=end;re.lastIndex=end;
+  }
+  return out+s.slice(last);
+}
+const clean=s=>fixTrig(clean0(s));
+/* ---- calculus: derivatives, definite integrals, limits are evaluated; indefinite integrals are verified by differentiating ---- */
+/* ---- implicit differentiation: y (and x,y for d/dt) depend on the variable; dy/dx is a symbol ---- */
+const DS=/^d2?[a-zA-Z]_d[a-zA-Z]2?$/,DEP={x:['y'],y:['x'],t:['x','y']};
+const IMPL=/(?<![a-zA-Z_])d2?[a-zA-Z]\/d[a-zA-Z]2?(?![a-zA-Z0-9_(])|[a-zA-Z]'/;
+function implicitOn(){const p=P();return !!p.implicit||p.lines.some(l=>IMPL.test(l))}
+function implD(node,v){
+  const nm=new Set();node.traverse(n=>{if(n.isSymbolNode)nm.add(n.name)});
+  let out=math.derivative(node,v).toString();
+  if(implicitOn()){
+    (DEP[v]||[]).forEach(w=>{if(nm.has(w))out+=`+(${math.derivative(node,w).toString()})*d${w}_d${v}`});
+    nm.forEach(k=>{const m=/^d([a-zA-Z])_d([a-zA-Z])$/.exec(k);if(m&&m[2]===v)out+=`+(${math.derivative(node,k).toString()})*d2${m[1]}_d${v}2`});
+  }
+  return out}
+function pSolve(f,g,names,ds){
+  let used=0;
+  for(let i=0;i<8;i++){
+    const sc={};names.forEach(n=>sc[n]=0.6+Math.random()*3.4);
+    const sol=h=>{
+      const e=p=>cx(h.evaluate({...sc,[ds]:p})),a0=e(0),a1=e(1),a2=e(2);
+      if(!fin(a0)||!fin(a1)||!fin(a2))return null;
+      const d=math.subtract(a1,a0);if(cabs(d)<1e-9)return null;
+      if(math.abs(math.add(math.subtract(a2,math.multiply(2,a1)),a0))>1e-6*Math.max(1,cabs(a0),cabs(a1)))return 'nl';
+      return math.divide(math.multiply(-1,a0),d)};
+    const p=sol(f),q=sol(g);
+    if(p==='nl'||q==='nl')return null;
+    if(!p||!q)continue;
+    used++;if(!ctol(p,q))return false;
+  }
+  return used?true:null}
+function implMiss(a,b){
+  try{if(!vars(a.src).includes('y'))return null;
+    const n=math.parse(a.src);let c=math.derivative(n,'x').toString();
+    c+=`+(${math.derivative(n,'y').toString()})`;
+    const r=rl(c,b.src,[...new Set([...vars(c),...vars(b.src)])]);
+    if(r.t==='same'||r.t==='mult')return 'Since y depends on x, differentiating a y term needs the chain rule: multiply its derivative by dy/dx.';
+  }catch(e){}
+  return null}
+function callAt(s,st){let d=0,args=[],c='';for(let i=st;i<s.length;i++){const ch=s[i];
+  if(ch==='('){if(d++)c+=ch}else if(ch===')'){if(--d===0){args.push(c);return{args,end:i}}c+=ch}
+  else if(ch===','&&d===1){args.push(c);c=''}else c+=ch}
+  throw Error('Unbalanced brackets')}
+function num(v){if(!isFinite(v))throw Error('Value is not finite');return String(v)}
+/* ---- improper integrals: infinite bounds and endpoint singularities (tanh-sinh), with divergence detection ---- */
+function bnd(x){x=x.trim();if(/^\+?inf(inity)?$/i.test(x))return Infinity;if(/^-\s*inf(inity)?$/i.test(x))return -Infinity;return math.evaluate(expand(x))}
+function tanhSinhSeq(F,a,b){
+  const Ts=[1.9,2.2,2.5,2.7],h=0.05,out=[];let sum=0,idx=0;
+  for(let k=0;k<=Math.round(2.7/h)&&idx<Ts.length;k++){
+    const t=k*h,u=Math.PI/2*Math.sinh(t),ch=Math.cosh(u),w=(b-a)/2*Math.PI/2*Math.cosh(t)/(ch*ch);
+    for(const sg of(k===0?[1]:[1,-1])){
+      const y=F((a+b)/2+(b-a)/2*Math.tanh(sg*u));
+      if(!isFinite(y))throw Error('The integrand is undefined somewhere in this range.');
+      sum+=w*y;
+    }
+    if(t>=Ts[idx]-1e-9){out.push(sum*h);idx++}
+  }
+  const[i1,i2,i3,i4]=out,d1=Math.abs(i2-i1),d2=Math.abs(i3-i2),d3=Math.abs(i4-i3);
+  if(!(d3<=1e-7*Math.max(1,Math.abs(i4))||(d3<=0.35*d2&&d2<=0.35*d1)))throw Error('This integral diverges (or converges too slowly to evaluate).');
+  return i4;
+}
+function improperInt(f,v,loS,hiS){
+  const g=math.compile(f),F=x=>{
+    let y=g.evaluate({[v]:x});
+    if(typeof y==='number'&&!isFinite(y)){const d=1e-7*Math.max(1,Math.abs(x)),y1=g.evaluate({[v]:x-d}),y2=g.evaluate({[v]:x+d});if(typeof y1==='number'&&typeof y2==='number'&&isFinite(y1)&&isFinite(y2))y=(y1+y2)/2}
+    if(typeof y!=='number')throw Error('The integrand is not a real number on this range.');
+    return y};
+  let lo=bnd(loS),hi=bnd(hiS),sign=1;
+  if(lo>hi){[lo,hi]=[hi,lo];sign=-1}
+  if(lo===hi)return 0;
+  const up=a=>tanhSinhSeq(u=>F(a+u/(1-u))/((1-u)*(1-u)),0,1),dn=b=>tanhSinhSeq(u=>F(b-u/(1-u))/((1-u)*(1-u)),0,1);
+  let r;
+  if(isFinite(lo)&&isFinite(hi))r=tanhSinhSeq(F,lo,hi);
+  else if(isFinite(lo))r=up(lo);
+  else if(isFinite(hi))r=dn(hi);
+  else r=up(0)+dn(0);
+  return sign*r;
+}
+function simpson(f,v,a,b){
+  let lo,hi,g;try{lo=bnd(a);hi=bnd(b);g=math.compile(f)}catch(e){throw Error('Cannot read integral')}
+  if(!isFinite(lo)||!isFinite(hi))return improperInt(f,v,a,b);
+  const n=2000,h=(hi-lo)/n;let t=0;
+  for(let i=0;i<=n;i++){const y=g.evaluate({[v]:lo+i*h});if(typeof y!=='number'||!isFinite(y))return improperInt(f,v,a,b);t+=y*(i===0||i===n?1:i%2?4:2)}
+  return t*h/3}
+function evalAt(f,v,a,b){
+  let g,lo,hi;try{g=math.compile(f);lo=math.evaluate(expand(a));hi=math.evaluate(expand(b))}catch(e){throw Error('Cannot read ev(...)')}
+  try{return g.evaluate({[v]:hi})-g.evaluate({[v]:lo})}catch(e){throw Error('Cannot evaluate ev(...)')}}
+function limit(f,v,a){
+  const g=math.compile(f),A=String(a).trim();
+  const at=x=>{const y=g.evaluate({[v]:x});if(typeof y!=='number'||!isFinite(y))throw Error('Limit is not defined');return y};
+  let p,q;
+  if(/^[+-]?inf/.test(A)){const s=A[0]==='-'?-1:1;p=at(s*1e6);q=at(s*1e8)}
+  else{const c=math.evaluate(expand(A));p=at(c+1e-4);q=at(c-1e-4)}
+  if(Math.abs(p-q)>1e-2*Math.max(1,Math.abs(p)))throw Error('Limit does not exist (sides differ)');
+  return(p+q)/2}
+function expand(s){
+  s=clean(s);const re=/d\/d([a-zA-Z])\s*\(|\b(lim|int|ev)\s*\(/g;let m,out='',last=0,rep;
+  while((m=re.exec(s))){
+    const{args,end}=callAt(s,m.index+m[0].length-1);
+    if(m[1]){try{rep=implD(math.parse(expand(args[0])),m[1])}catch(e){throw Error('Cannot differentiate this')}}
+    else if(m[2]==='ev'){if(args.length!==4)throw Error('Write ev(F,x,a,b)');rep=num(evalAt(expand(args[0]),args[1].trim(),args[2],args[3]))}
+    else if(m[2]==='int'){if(args.length!==4)throw Error('Write indefinite integrals as int(f,x)=F+C');rep=num(simpson(expand(args[0]),args[1].trim(),args[2],args[3]))}
+    else{if(args.length!==3)throw Error('Write lim(f,x,a): a limit needs a function, a variable and a value');rep=num(limit(expand(args[0]),args[1].trim(),args[2]))}
+    out+=s.slice(last,m.index)+'('+rep+')';last=end+1;re.lastIndex=last;
+  }
+  return out+s.slice(last);
+}
+function bareInt(s){
+  s=clean(s).trim();if(!/^int\(/.test(s))return null;
+  try{const{args,end}=callAt(s,3);return end===s.length-1&&args.length===2?{f:args[0],v:args[1].trim()}:null}catch(e){return null}
+}
+function sameF(x,y){
+  try{
+    const f=math.compile(x),g=math.compile(y),names=[...new Set([...vars(x),...vars(y)])];let used=0;
+    for(let i=0;i<10;i++){const sc={};names.forEach(n=>sc[n]=0.6+Math.random()*3.4);
+      const u=cx(f.evaluate(sc)),w=cx(g.evaluate(sc));if(!fin(u)||!fin(w))continue;
+      used++;if(!ctol(u,w))return{s:'bad',m:'Not equal to the line above'}}
+    return used?{s:'ok'}:{s:'bad',m:'Cannot compare these lines'};
+  }catch(e){return{s:'bad',m:'Cannot read this line'}}
+}
+/* ---- plain-English reasons for a failed step ---- */
+const fmt=c=>math.format(c,{precision:4});
+function rl(L,R,names){
+  try{const f=math.compile(L),g=math.compile(R),ds=[],rs=[];
+    for(let i=0;i<6;i++){const sc={};names.forEach(n=>sc[n]=0.6+Math.random()*3.4);
+      const u=f.evaluate(sc),w=g.evaluate(sc);if(typeof u!=='number'||typeof w!=='number'||!isFinite(u)||!isFinite(w))continue;
+      ds.push(w-u);if(Math.abs(u)>1e-9)rs.push(w/u)}
+    const cst=a=>a.length>2&&a.every(v=>Math.abs(v-a[0])<=1e-6*Math.max(1,Math.abs(a[0])));
+    if(cst(ds))return Math.abs(ds[0])<1e-9?{t:'same'}:{t:'add',c:ds[0]};
+    if(cst(rs))return{t:'mult',c:rs[0]};
+  }catch(e){}
+  return{t:'none'}}
+const neg=r=>r.t==='mult'&&Math.abs(r.c+1)<1e-6;
+const dsc=r=>r.t==='same'?'stayed the same':r.t==='add'?(r.c<0?`had ${fmt(-r.c)} subtracted`:`had ${fmt(r.c)} added`):neg(r)?'changed sign':Math.abs(r.c)<1?`was divided by ${fmt(1/r.c)}`:`was multiplied by ${fmt(r.c)}`;
+function why(a,b){
+  if(a.eq&&b.eq&&implicitOn()){const mm=implMiss(a,b);if(mm)return mm}
+  const names=[...new Set([...vars(a.src),...vars(b.src)])];
+  if(!a.eq){const r=rl(a.src,b.src,names);
+    if(r.t==='add')return `This is the line above with ${fmt(Math.abs(r.c))} ${r.c<0?'subtracted':'added'}, so a term was changed.`;
+    if(neg(r))return 'The sign of the whole expression flipped.';
+    if(r.t==='mult')return `This is ${fmt(r.c)} times the line above, so a factor is wrong.`;
+    return 'This is not equal to the line above; recheck the algebra in this step.';}
+  const x=rl(a.L,b.L,names),y=rl(a.R,b.R,names);
+  if(x.t!=='none'&&y.t!=='none')return `The left side ${dsc(x)} but the right side ${dsc(y)}; both sides need the same operation.`;
+  return 'This does not follow from the line above; recheck this step.';
+}
+function selfWhy(L,R){
+  try{const l=expand(L),r=expand(R),names=[...new Set([...vars(l),...vars(r)])];
+    if(!names.length)return `The left side works out to ${fmt(math.evaluate(l))}, not ${fmt(math.evaluate(r))}.`;
+    const x=rl(l,r,names);
+    if(neg(x))return 'The right side has the wrong sign.';
+    if(x.t==='mult')return `The right side is ${fmt(x.c)} times the left side, so a factor is off.`;
+    if(x.t==='add')return `The right side is off by ${fmt(x.c)}; check that term.`;
+  }catch(e){}
+  return 'The two sides are not equal; recheck this result.';
+}
+/* ---- named derivative mistakes ---- */
+const ts=n=>n.toString({parenthesis:'auto',implicit:'hide'});
+const sx=n=>{try{return ts(math.simplify(n))}catch(e){return ts(n)}};
+function bareD(s){
+  s=clean(s).trim();const m=/^d\/d([a-zA-Z])\s*\(/.exec(s);if(!m)return null;
+  try{const{args,end}=callAt(s,m[0].length-1);return end===s.length-1?{v:m[1],e:args[0]}:null}catch(e){return null}}
+function hasV(n,v){let h=false;n.traverse(m=>{if(m.isSymbolNode&&m.name===v)h=true});return h}
+function plain(n,v){while(n.isParenthesisNode)n=n.content;return n.isSymbolNode&&n.name===v}
+function chainCand(node,v){
+  while(node.isParenthesisNode)node=node.content;
+  const sub=(o,g)=>math.derivative(o,'u').transform(m=>m.isSymbolNode&&m.name==='u'?g:m);
+  if(node.isFunctionNode&&node.args.length===1&&node.fn.name&&!plain(node.args[0],v)&&hasV(node.args[0],v))
+    return{c:sub(`${node.fn.name}(u)`,node.args[0]),g:node.args[0],o:`differentiating ${node.fn.name}`};
+  if(node.isOperatorNode&&node.op==='^'){const[b,x]=node.args;
+    if(hasV(b,v)&&!hasV(x,v)&&!plain(b,v))return{c:sub(`u^(${ts(x)})`,b),g:b,o:'applying the power rule'};
+    if(hasV(x,v)&&!hasV(b,v)&&!plain(x,v))return{c:sub(`(${ts(b)})^u`,x),g:x,o:'differentiating the exponential'}}
+  if(node.isOperatorNode&&node.op==='*'&&node.args.length===2){
+    const[p,q]=node.args;
+    for(const[k,o]of[[p,q],[q,p]])if(!hasV(k,v)){const r=chainCand(o,v);if(r)return{...r,c:new math.OperatorNode('*','multiply',[k,r.c])}}}
+  return null}
+function derivWhy(D,ans){
+  try{
+    const v=D.v,A=expand(ans),node=math.parse(expand(D.e));
+    const is=c=>sameF(expand(ts(c)),A).s==='ok';
+    if(implicitOn()){const dep=(DEP[v]||[]).filter(w=>hasV(node,w));
+      if(dep.length){let ex=math.derivative(node,v).toString();dep.forEach(w=>ex+=`+(${math.derivative(node,w).toString()})`);
+        if(sameF(ex,A).s==='ok')return `Since ${dep[0]} depends on ${v}, each ${dep[0]} term needs the chain rule: multiply its derivative by d${dep[0]}/d${v}.`}}
+    const ch=chainCand(node,v);
+    if(ch&&is(ch.c)){const gp=sx(math.derivative(ch.g,v));
+      return `You forgot the chain rule: after ${ch.o}, multiply by the derivative of the inside, d/d${v}(${ts(ch.g)}) = ${gp}, to get ${sx(math.derivative(node,v))}.`}
+    if(is(node))return 'That is the original expression; you still need to differentiate it.';
+    let n=node;while(n.isParenthesisNode)n=n.content;
+    if(n.isOperatorNode&&n.args.length===2&&n.args.every(a=>hasV(a,v))){
+      const[u,w]=n.args,du=math.derivative(u,v),dw=math.derivative(w,v);
+      if(n.op==='*'&&is(new math.OperatorNode('*','multiply',[du,dw])))return 'That is u\u2032\u00b7v\u2032; the product rule is (uv)\u2032 = u\u2032v + uv\u2032.';
+      if(n.op==='/'&&is(new math.OperatorNode('/','divide',[du,dw])))return 'That is u\u2032/v\u2032; the quotient rule is (u/v)\u2032 = (u\u2032v \u2212 uv\u2032)/v\u00b2.'}
+    if(n.isOperatorNode&&n.op==='^'&&plain(n.args[0],v)&&!hasV(n.args[1],v)){
+      const e=n.args[1];
+      if(is(new math.OperatorNode('*','multiply',[e,n])))return `Power rule: bring the exponent down and subtract 1 from it, so x^${ts(e)} becomes ${sx(math.derivative(n,v))}.`;
+      if(is(new math.parse(`${ts(n.args[0])}^(${ts(e)}-1)`)))return `You dropped the coefficient: the power rule gives ${sx(math.derivative(n,v))}.`}
+    const r=rl(sx(math.derivative(node,v)),A,vars(sx(math.derivative(node,v))).concat(vars(A)));
+    if(neg(r)&&/cos/.test(ts(node)))return 'Sign error: d/dx cos(u) = \u2212sin(u), so keep the minus sign.';
+  }catch(e){}
+  return null}
+/* ---- typesetting: fractions, exponents, logs, calculus symbols ---- */
+function toTeX(str){
+  try{
+    const h=(n,o)=>{
+      if(n.isSymbolNode&&n.name==='inf')return '\\infty';
+      if(n.isSymbolNode){let q=/^d([a-zA-Z])_d([a-zA-Z])$/.exec(n.name);if(q)return `\\frac{d${q[1]}}{d${q[2]}}`;q=/^d2([a-zA-Z])_d([a-zA-Z])2$/.exec(n.name);if(q)return `\\frac{d^{2}${q[1]}}{d${q[2]}^{2}}`}
+      if(!n.isFunctionNode||!n.fn.name)return;
+      const nm=n.fn.name,a=n.args.map(x=>x.toTex(o)),v=n.args[1]?n.args[1].toString():'x';
+      if(/^D_[a-zA-Z]$/.test(nm))return `\\frac{d}{d${nm[2]}}\\left(${a[0]}\\right)`;
+      if(nm==='ev'&&a.length===4)return `\\left[${a[0]}\\right]_{${a[2]}}^{${a[3]}}`;
+      if(nm==='int'&&a.length===2)return `\\int ${a[0]}\\,d${v}`;
+      if(nm==='int'&&a.length===4)return `\\int_{${a[2]}}^{${a[3]}} ${a[0]}\\,d${v}`;
+      if(nm==='lim'&&a.length===3)return `\\lim_{${v}\\to ${a[2]}} ${a[0]}`;
+    };
+    return clean(str).replace(/d\/d([a-zA-Z])\s*\(/g,'D_$1(').split('=').map(p=>math.parse(p).toTex({handler:h,parenthesis:'auto'})).join('=');
+  }catch(e){return null}
+}
+function setTs(el,text){
+  el.textContent='';if(!text.trim())return;
+  const t=toTeX(text);
+  if(t&&window.MathJax&&MathJax.tex2svg){try{if(!window.mjSheet){document.head.append(MathJax.svgStylesheet());window.mjSheet=1}const c=MathJax.tex2svg(t,{display:false});c.querySelectorAll('mjx-assistive-mml').forEach(x=>x.remove());el.append(c);return}catch(e){}}
+  el.textContent=text;
+}
+function focusRow(i){const r=$('lines').children[i];if(!r)return;r.classList.add('edit');r.querySelector('input').focus()}
+function toTex(s){const t=toTeX(s);return t?t.replace(/=/g,'&='):s}
+/* ---- solve from the last line, explaining each step ---- */
+function fixM(){const p=P();p.meta=p.meta||[];while(p.meta.length<p.lines.length)p.meta.push({});p.meta.length=p.lines.length;return p.meta}
+function placeSolve(){
+  document.querySelectorAll('.sb').forEach(b=>b.remove());
+  const L=P().lines;let li=L.length-1;while(li>=0&&!L[li].trim())li--;
+  const r=li>=0&&$('lines').children[li];if(!r)return;
+  const w=document.createElement('span');w.className='sb';
+  [['Next step','Show just the next step from this line, with an explanation',1],['Solve \u25b8','Work out the rest from this line, explaining each step',0],['Solve offline','Work out the rest with built-in rules, no AI needed',2]].forEach(([t,ti,one])=>{
+    const b=document.createElement('button');b.className='solve';b.textContent=t;b.title=ti;
+    b.onmousedown=e=>e.preventDefault();b.onclick=()=>one===2?solveOffline(li):solve(li,!!one);w.append(b)});
+  r.querySelector('.col').after(w);
+}
+const SOLVE=`You are a patient maths tutor. Below is a student's working so far, one step per line. Continue from the LAST line and solve the problem to its final answer, one small step at a time (at most 12 steps). A line that still contains an integral, derivative or limit that can be carried out is NOT finished: carry it out. Reply with [] only when the last line is already a fully evaluated final answer.
+Write each step in plain text for a math.js-style parser: * for multiplication, ^ for powers, sqrt(x), pi, e, sin(x); log(x) is the natural log. Derivatives: d/dx(expr), and dy/dx for the derivative of y (d2y/dx2 for the second). Indefinite integrals: int(f,x), with the result written like x^2+C. Integration by parts and substitution steps may keep a smaller integral inside, e.g. int(x*e^x,x)=x*e^x-int(e^x,x); finish with int(f,x)=F+C. Definite integrals: int(f,x,a,b). Limits: lim(f,x,a), using inf for infinity. To apply the bounds to an antiderivative F write ev(F,x,a,b), which means F(b)-F(a).
+Use only numbers, single-letter variables (i is the imaginary unit), + - * / ^ ( ), the functions above and at most one = sign: no words, arrows, units or commentary inside a step.
+Every step must be equivalent to the line before it so it can be checked automatically. For implicit differentiation a step may differentiate both sides, e.g. d/dx(x^2+y^2)=d/dx(25), then 2x+2y*dy/dx=0, then dy/dx=-x/y. Never write "or", "\u00b1" or two answers on one line: give each case its own line. When a step starts a new case (for example x-2=0 after factoring to (x-2)(x-3)=0) or introduces a substitution variable, set "unchecked": true on that step so it is not compared with the line above.
+For each step give "why": one short sentence saying what you did and the rule or reason behind it.
+Reply with only a JSON array like [{"line":"2x=6","why":"Subtract 4 from both sides to isolate the x term."}].
+
+Student's working:
+`;
+/* ---- Claude connection: built-in (published page) or the user's own API key ---- */
+const KEYN='stepwise.apiKey',MODN='stepwise.model',DEFMODEL='claude-sonnet-5-5';
+function getKey(){try{return sessionStorage.getItem(KEYN)||localStorage.getItem(KEYN)||''}catch(e){return''}}
+function keyWhere(){try{return localStorage.getItem(KEYN)?'device':sessionStorage.getItem(KEYN)?'tab':''}catch(e){return''}}
+function getModel(){try{return localStorage.getItem(MODN)||DEFMODEL}catch(e){return DEFMODEL}}
+function storeKey(k,remember){try{sessionStorage.removeItem(KEYN);localStorage.removeItem(KEYN);if(k)(remember?localStorage:sessionStorage).setItem(KEYN,k)}catch(e){}}
+function storeModel(m){try{if(m&&m!==DEFMODEL)localStorage.setItem(MODN,m);else localStorage.removeItem(MODN)}catch(e){}}
+function parseJsonLoose(t){
+  const c=String(t).replace(/```json|```/g,'').trim();
+  try{return JSON.parse(c)}catch(e){}
+  const a=c.indexOf('['),b=c.lastIndexOf(']');
+  if(a>=0&&b>a){try{return JSON.parse(c.slice(a,b+1))}catch(e){}}
+  throw Error('Claude replied in a format that could not be read. Try again.');
+}
+async function apiJson(prompt,key){
+  let res;
+  try{
+    res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+      headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:getModel(),max_tokens:4000,messages:[{role:'user',content:prompt}]})});
+  }catch(e){throw Error('Could not reach the Claude API. Check your connection, and that no extension is blocking api.anthropic.com.')}
+  if(!res.ok){
+    let m='';try{m=(await res.json()).error.message}catch(e){}
+    if(res.status===401)throw Error('The API key was rejected. Check it under Claude key.');
+    if(res.status===429)throw Error('Rate limit reached. Wait a moment and try again.');
+    throw Error(`Claude API error ${res.status}${m?': '+m:''}`);
+  }
+  const data=await res.json();
+  return parseJsonLoose((data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join(''));
+}
+async function getSample(){
+  try{const sm=await window.claude?.use('sample');if(sm)return sm}catch(e){}
+  const key=getKey();
+  return key?{json:p=>apiJson(p,key),limits:async()=>({})}:null;
+}
+/* ---- end Claude connection ---- */
+function validSide(x){
+  const b=bareInt(x);
+  if(b){math.parse(expand(b.f));return /^[a-zA-Z]$/.test(b.v)}
+  const q=lift(x),p=fn(q.s);math.compile(p.src);
+  return q.ints.every(i=>/^[a-zA-Z]$/.test(i.v))&&vars(p.src).every(n=>/^([a-zA-Z]|d2?[a-zA-Z]_d[a-zA-Z]2?|Iq\d+)$/.test(n));
+}
+function validLine(t){
+  try{const c=clean(t);if(!/^[\w\s+\-*/^().,=]+$/.test(c))return false;
+    const sides=c.split('=');return sides.length<=2&&sides.every(validSide)}catch(e){return false}
+}
+const asSteps=o=>(Array.isArray(o)?o:[]).filter(x=>x&&typeof x.line==='string'&&x.line.trim());
+async function solve(li,one){
+  const note=$('lines').children[li].querySelector('.note');
+  const sample=await getSample();
+  if(!sample){note.textContent='Solve ▸ and Next step need a Claude API key. Add one under Claude key, or use Solve offline.';return}
+  const ctx=P().lines.slice(0,li+1).filter(t=>t.trim()).join('\n');
+  note.textContent=one?'Finding the next step\u2026':'Solving\u2026';
+  let base=one?SOLVE.replace('Continue from the LAST line and solve the problem to its final answer, one small step at a time (at most 12 steps).','Give ONLY the single next step from the LAST line, the one a student should do next: reply with an array containing exactly one object.'):SOLVE;
+  base=base.replace("Student's working:",(implicitOn()?'Note: y is a function of x in this problem, so differentiate y terms with the chain rule and write dy/dx.\n\n':'')+"Student's working:");
+  try{
+    let steps=asSteps(await sample.json(base+ctx,{modelTier:'default'}));
+    const bad=steps.filter(x=>!validLine(x.line));
+    if(bad.length){
+      note.textContent='Fixing formatting\u2026';
+      steps=asSteps(await sample.json(base+ctx+'\n\nYour previous reply had lines that are not valid in the required syntax: '+bad.map(x=>x.line).join(' | ')+'\nReply again with the complete corrected array. For a definite integral write the antiderivative step as ev(F,x,a,b), meaning F(b)-F(a), then substitute the bounds as plain arithmetic, then simplify.',{modelTier:'default'}));
+      const k=steps.findIndex(x=>!validLine(x.line));if(k>=0)steps=steps.slice(0,k);
+      if(k===0){note.textContent='I could not turn that into valid steps. Try Next step, or write the line differently (see the syntax guide).';return}
+    }
+    if(one)steps=steps.slice(0,1);
+    if(!steps.length){note.textContent='This is already in its simplest form, so there is nothing left to do.';return}
+    fixM();
+    P().lines=P().lines.slice(0,li+1).concat(steps.map(x=>x.line.trim()));
+    P().meta=P().meta.slice(0,li+1).concat(steps.map(x=>({note:String(x.why||''),skip:!!x.unchecked})));
+    save();renderLines();
+  }catch(e){note.textContent=e.code==='not_granted'?'Permission declined.':'Could not solve: '+(e.message||e.code)}
+}
+/* ---- syntax guide ---- */
+const GUIDE=[
+ ['Basics',[
+  ['2x+4=10','Equations use a single = sign. Write one step per line.'],
+  ['3x*(x+2)','Multiply with *. Writing 2x for 2*x also works.'],
+  ['(x^2+4x)/4','Fractions use /. Put sums on the top or bottom in brackets.'],
+  ['x^(n+1)','Powers use ^. Use brackets for anything longer than one symbol.'],
+  ['sqrt(x+1)','Square root.'],
+  ['nthRoot(x,3)','Other roots: nthRoot(number, root), here a cube root.'],
+  ['abs(x-2)','Absolute value.']]],
+ ['Functions',[
+  ['sin(2x)','Always use brackets: sin(x), cos(x), tan(x). A power goes after: sin(x)^2.'],
+  ['log(x)','Natural log (shown as ln).'],
+  ['log(x,10)','Log with another base: log(number, base).'],
+  ['e^x','e and pi are built in: e^x, 2*pi.'],
+  ['cos^2 x - sin^2 x','Trig shorthand such as cos^2 x, sin 2x or tan x is understood. Brackets, like cos(x)^2, are the safest.'],
+  ['cos(x)^2-sin(x)^2=cos(2*x)','Trig identities can be checked like any other line.']]],
+ ['Derivatives',[
+  ['d/dx(x^3*sin(x))','Derivative with respect to x. Any letter works, like d/dt(t^2).'],
+  ['d/dx(x^2)=2x','Put the answer on the same line, or on the next line.']]],
+ ['Implicit differentiation',[
+  ['d/dx(x^2+y^2)=d/dx(25)','Differentiate both sides. y counts as a function of x once you write dy/dx (or tick the box above the lines).'],
+  ['2x+2y*dy/dx=0',"dy/dx is the derivative of y. You can also write y'."],
+  ['d2y/dx2',"Second derivative of y. You can also write y''."]]],
+ ['Integrals',[
+  ['int(2x,x)=x^2+C','Indefinite integral: int(function, variable). Add +C to the answer.'],
+  ['int(x,x,0,2)=2','Definite integral: int(function, variable, lower, upper).'],
+  ['ev(x^2/2,x,0,2)','Apply the bounds to an antiderivative F: ev(F, variable, lower, upper) means F(upper) minus F(lower).']]],
+ ['Limits',[
+  ['lim(sin(x)/x,x,0)=1','Limit: lim(function, variable, value).'],
+  ['lim((1+1/x)^x,x,inf)=e','Use inf for infinity, or -inf for negative infinity.']]],
+ ['Complex numbers',[
+  ['sqrt(-4)=2*i','i is the imaginary unit.']]]
+];
+function fillGuide(){document.querySelectorAll('#gbody .gx').forEach(el=>setTs(el,el.dataset.c))}
+function insertEx(t){
+  fixM();const L=P().lines;let i=L.length-1;while(i>=0&&!L[i].trim())i--;
+  P().lines=L.slice(0,i+1).concat(t);P().meta=P().meta.slice(0,i+1).concat({});
+  save();$('guide').close();renderLines(i+1);
+}
+function openGuide(sec){
+  const b=$('gbody');
+  if(!b.children.length){
+    GUIDE.forEach(([h,rows])=>{
+      b.insertAdjacentHTML('beforeend',`<div class="gh">${h}</div>`);
+      rows.forEach(([c,d])=>{
+        const r=document.createElement('div');r.className='gr';
+        r.innerHTML='<div class="top"><code></code><button>Add as a line</button></div><div class="gx"></div><div class="gd"></div>';
+        r.querySelector('code').textContent=c;r.querySelector('.gx').dataset.c=c;r.querySelector('.gd').textContent=d;
+        r.querySelector('button').onclick=()=>insertEx(c);b.append(r)})});
+    b.insertAdjacentHTML('beforeend','<div class="gd" style="margin-top:12px">Tips: keep one step per line. Do not put words, arrows or "or" inside a line; if there are two answers (like \u00b1), give each its own line. The explanation under a \u2717 tells you what went wrong.</div>');
+  }
+  $('guide').showModal();fillGuide();
+  if(!(window.MathJax&&MathJax.tex2svg))setTimeout(fillGuide,700);
+  if(sec){const h=[...b.querySelectorAll('.gh')].find(x=>x.textContent===sec);if(h)h.scrollIntoView({block:'start'})}
+}
+$('help').onclick=()=>openGuide();
+$('gclose').onclick=()=>$('guide').close();
+/* ---- integrals inside larger expressions (integration by parts, substitution) ---- */
+const INTS=new Map();
+function lift(str){
+  const s=clean(str),re=/\bint\s*\(/g;let m,out='',last=0;const ints=[];
+  while((m=re.exec(s))){
+    const{args,end}=callAt(s,m.index+m[0].length-1);
+    if(args.length!==2)continue;
+    const f=expand(args[0]),v=args[1].trim(),key=f+'|'+v;
+    if(!INTS.has(key))INTS.set(key,INTS.size);
+    const sym='Iq'+INTS.get(key);ints.push({sym,f,v});
+    out+=s.slice(last,m.index)+'('+sym+')';last=end+1;re.lastIndex=last;
+  }
+  return{s:out+s.slice(last),ints};
+}
+function dTotal(str,v){
+  const L=lift(str),node=math.parse(expand(L.s));
+  let out=math.derivative(node,v).toString();
+  L.ints.forEach(q=>{if(q.v===v)out+=`+(${math.derivative(node,q.sym).toString()})*(${q.f})`});
+  return out;
+}
+/* ---- offline solver: built-in rules, no AI ---- */
+const gcd=(a,b)=>b?gcd(b,a%b):Math.abs(a),lcm=(a,b)=>a/gcd(a,b)*b;
+function ratl(x,tol=1e-9){if(typeof x!=='number'||!isFinite(x))return null;for(let d=1;d<=2000;d++){const n=Math.round(x*d);if(Math.abs(x-n/d)<tol)return math.fraction(n,d)}return null}
+const Fn=f=>Number(f.n),Fd=f=>Number(f.d),Fs=f=>Number(f.s);
+const fs=f=>{const n=Fs(f)*Fn(f);return Fd(f)===1?String(n):`${n}/${Fd(f)}`};
+const fpar=f=>(Fs(f)<0||Fd(f)!==1)?`(${fs(f)})`:fs(f);
+const F0=()=>math.fraction(0),feq=(a,b)=>math.equal(a,b);
+const nice=v=>{if(typeof v!=='number')return math.format(v,{precision:8});const f=ratl(v,1e-8);if(f)return fs(f);if(Math.abs(v-Math.E)<1e-5)return 'e';if(Math.abs(v-Math.PI)<1e-5)return 'pi';return math.format(v,{precision:8})};
+const tidy=s=>s.replace(/ ?([\^*\/]) ?/g,'$1').replace(/(\d) ([a-zA-Z(])/g,'$1$2');
+const nz=s=>s.replace(/\s/g,'');
+const disp=s=>s.replace(/\bd(2?)([a-zA-Z])_d([a-zA-Z])(2?)\b/g,'d$1$2/d$3$4');
+const sx2=n=>{try{return ts(math.simplify(n))}catch(e){return ts(n)}};
+function coeffs(src,v){
+  try{
+    const g=math.compile(src),pts=[0,1,2,3,4,5],ys=pts.map(t=>g.evaluate({[v]:t}));
+    if(!ys.every(y=>typeof y==='number'&&isFinite(y)))return null;
+    const c=math.lusolve(pts.map(t=>pts.map((_,i)=>t**i)),ys).map(r=>r[0]);
+    const val=t=>c.reduce((s,a,i)=>s+a*t**i,0);
+    for(const t of[6.5,-1.7,2.3,-4]){const y=g.evaluate({[v]:t});if(typeof y!=='number'||Math.abs(y-val(t))>1e-6*Math.max(1,Math.abs(y)))return null}
+    if(Math.abs(c[5])>1e-6)return null;
+    const fr=c.slice(0,5).map(x=>ratl(x));if(fr.some(x=>!x))return null;
+    while(fr.length>1&&Fn(fr[fr.length-1])===0)fr.pop();
+    return fr;
+  }catch(e){return null}
+}
+function polyS(c,v){
+  let out='';
+  for(let k=c.length-1;k>=0;k--){
+    const f=c[k];if(Fn(f)===0)continue;
+    const m=math.abs(f),one=Fn(m)===1&&Fd(m)===1;
+    const body=k===0?fs(m):(one?'':(Fd(m)===1?String(Fn(m)):`(${Fn(m)}/${Fd(m)})`))+v+(k>1?'^'+k:'');
+    out+=(Fs(f)<0?'-':(out?'+':''))+body;
+  }
+  return out||'0';
+}
+const cfk=(a,k)=>a[k]||F0();
+const xm=(r,v)=>Fn(r)===0?v:(Fs(r)<0?`${v}+${fs(math.abs(r))}`:`${v}-${fs(r)}`);
+function evalP(t,r){let s=F0();for(let k=t.length-1;k>=0;k--)s=math.add(math.multiply(s,r),t[k]);return s}
+function deflate(t,r){const n=t.length-1,q=new Array(n);q[n-1]=t[n];for(let k=n-1;k>=1;k--)q[k-1]=math.add(t[k],math.multiply(r,q[k]));return q}
+function ratRoot(t){
+  const L=t.reduce((m,f)=>lcm(m,Fd(f)),1),ic=t.map(f=>Fs(f)*Fn(f)*(L/Fd(f)));
+  if(ic[0]===0)return F0();
+  const divs=n=>{const r=[];for(let i=1;i<=Math.min(n,3000);i++)if(n%i===0)r.push(i);return r};
+  for(const p of divs(Math.abs(ic[0])))for(const q of divs(Math.abs(ic[ic.length-1])))for(const sg of[1,-1]){
+    const r=math.fraction(sg*p,q);if(feq(evalP(t,r),0))return r}
+  return null;
+}
+function leadS(a){return feq(a,1)?'':feq(a,-1)?'-':(Fd(a)===1?String(Fs(a)*Fn(a)):`(${fs(a)})`)}
+function sqrtF(D){if(Fs(D)<0)return null;const rn=Math.round(Math.sqrt(Fn(D))),rd=Math.round(Math.sqrt(Fd(D)));return rn*rn===Fn(D)&&rd*rd===Fd(D)?math.fraction(rn,rd):null}
+function surd(M){let s=1,m=M;for(let i=2;i*i<=m;i++)while(m%(i*i)===0){m/=i*i;s*=i}return{s,m}}
+function rootLines(r,v,steps,why){
+  const cl=xm(r,v);steps.push({line:`${cl}=0`,why,unchecked:true});
+  if(cl!==v)steps.push({line:`${v}=${fs(r)}`,why:`Solve for ${v}.`});
+}
+function quad(t,v,steps){
+  const a=t[2],b=t[1],c=t[0];
+  const D=math.subtract(math.multiply(b,b),math.multiply(4,math.multiply(a,c))),sq=sqrtF(D),a2=math.multiply(2,a),nb=math.unaryMinus(b);
+  if(sq){
+    const r1=math.divide(math.add(nb,sq),a2),r2=math.divide(math.subtract(nb,sq),a2),same=feq(r1,r2);
+    const f1=`(${xm(r1,v)})`,f2=same?'^2':`(${xm(r2,v)})`;
+    steps.push({line:`${leadS(a)}${f1}${f2}=0`,why:same?'The discriminant is 0, so the quadratic is a perfect square.':'The discriminant is a perfect square, so the quadratic factors.'});
+    const why='A product is zero when one of its factors is zero.';
+    rootLines(r1,v,steps,why);if(!same)rootLines(r2,v,steps,why);
+    return true;
+  }
+  steps.push({line:`${fpar(b)}^2-4*${fpar(a)}*${fpar(c)}=${fs(D)}`,why:`Compute the discriminant D = b² − 4ac. It is ${Fs(D)<0?'negative, so the roots are complex':'not a perfect square, so the roots are irrational'}.`,unchecked:true});
+  const imag=Fs(D)<0,M=Fn(D)*Fd(D),{s,m}=surd(M),kappa=math.divide(math.fraction(s),math.multiply(a2,Fd(D))),rho=math.divide(nb,a2);
+  const k=math.abs(kappa),N=(Fn(k)===1?'':Fn(k)+' ')+(m===1?'':`sqrt(${m})`)+(imag?(m===1?'i':' i'):''),term=Fd(k)===1?(N.trim()):`(${N.trim()})/${Fd(k)}`;
+  [['+',0],['-',1]].forEach(([sg,i])=>{
+    steps.push({line:`${v}=(${fs(nb)}${sg}sqrt(${fs(D)}))/(2*${fpar(a)})`,why:`Quadratic formula, ${sg==='+'?'plus':'minus'} case: x = (−b ${sg==='+'?'+':'−'} √D) / 2a.`,unchecked:true});
+    const op=(i===0)===(Fs(kappa)>0)?'+':'-',rs=feq(rho,0)?'':fs(rho);
+    steps.push({line:`${v}=${rs?rs+op:(op==='-'?'-':'')}${term}`,why:imag?'Write √D as a multiple of i and simplify.':'Simplify the square root and the fraction.'});
+  });
+  return true;
+}
+/* ---- exact radical roots for cubics and quartics with no rational root ---- */
+const surdS=F=>{const N=Fn(F),Dd=Fd(F),{s,m}=surd(N*Dd),k=math.fraction(s,Dd);if(m===1)return fs(k);const nk=Fn(k)===1?'':Fn(k);return Fd(k)===1?`${nk}sqrt(${m})`:`${nk?`(${nk}sqrt(${m}))`:`sqrt(${m})`}/${Fd(k)}`};
+const addSh=(e,sh)=>feq(sh,0)?e:(Fs(sh)>0?`${e}-${fpar(sh)}`:`${e}+${fs(math.abs(sh))}`);
+const cc=c=>{c=math.complex(c);let re=c.re,im=c.im;const sc=Math.max(1,Math.abs(re),Math.abs(im));if(Math.abs(im)<1e-9*sc)im=0;if(Math.abs(re)<1e-9*sc)re=0;return im===0?math.format(re,{precision:8}):math.format(math.complex(re,im),{precision:8}).replace(/\s/g,'')};
+const lets=(v,k)=>['k','u','w','z','n','r','a'].filter(l=>l!==v).slice(0,k);
+const fnum=f=>Fs(f)*Fn(f)/Fd(f);
+function ratRoots(t){
+  const L=t.reduce((m,f)=>lcm(m,Fd(f)),1),ic=t.map(f=>Fs(f)*Fn(f)*(L/Fd(f))),out=[];
+  if(ic[0]===0)return[F0()];
+  const divs=n=>{const r=[];for(let i=1;i<=Math.min(n,3000);i++)if(n%i===0)r.push(i);return r};
+  for(const p of divs(Math.abs(ic[0])))for(const q of divs(Math.abs(ic[ic.length-1])))for(const sg of[1,-1]){const r=math.fraction(sg*p,q);if(feq(evalP(t,r),0))out.push(r)}
+  return out;
+}
+function polyAt(t,x){let s=math.complex(0,0);for(let k=t.length-1;k>=0;k--)s=math.add(math.multiply(s,x),fnum(t[k]));return s}
+function rootsOk(t,xs){
+  const sc=Math.max(1,...t.map(f=>Math.abs(fnum(f))));
+  return xs.every(x=>{const mag=Math.max(1,math.abs(x))**(t.length-1);return math.abs(polyAt(t,x))<=1e-6*sc*mag});
+}
+function cardano(a,b,c,d,U,V){
+  const a2=math.multiply(a,a),a3=math.multiply(a2,a),b2=math.multiply(b,b),b3=math.multiply(b2,b);
+  const p=math.divide(math.subtract(math.multiply(3,math.multiply(a,c)),b2),math.multiply(3,a2));
+  const q=math.divide(math.add(math.subtract(math.multiply(2,b3),math.multiply(9,math.multiply(a,math.multiply(b,c)))),math.multiply(27,math.multiply(a2,d))),math.multiply(27,a3));
+  const sh=math.divide(b,math.multiply(3,a)),nq2=math.divide(math.unaryMinus(q),2);
+  const D=math.add(math.divide(math.multiply(q,q),4),math.divide(math.multiply(p,math.multiply(p,p)),27));
+  const sD=Fn(D)===0?'0':(Fs(D)>0?surdS(D):`i*(${surdS(math.unaryMinus(D))})`),nq=feq(nq2,0)?'':fs(nq2);
+  const uA=nq?`${nq}+${sD}`:sD,vA=nq?`${nq}-${sD}`:`-${sD}`;
+  const uN=math.cbrt(math.evaluate(uA)),vN=math.cbrt(math.evaluate(vA));
+  const w=math.complex(-0.5,Math.sqrt(3)/2),w2=math.conj(w),shN=fnum(sh);
+  const ys=[math.add(uN,vN),math.add(math.multiply(w,uN),math.multiply(w2,vN)),math.add(math.multiply(w2,uN),math.multiply(w,vN))];
+  const es=[`${U}+${V}`,`(-1+i*sqrt(3))/2*${U}+(-1-i*sqrt(3))/2*${V}`,`(-1-i*sqrt(3))/2*${U}+(-1+i*sqrt(3))/2*${V}`];
+  return{p,q,sh,uA,vA,roots:es.map((e,k)=>({e,x:math.subtract(ys[k],shN)}))};
+}
+function cubicRadical(t,v,steps){
+  const[U,V]=lets(v,3).slice(1),yv=v==='y'?'z':'y',C=cardano(t[3],t[2],t[1],t[0],U,V);
+  if(!rootsOk(t,C.roots.map(r=>r.x)))return false;
+  if(!feq(C.sh,0))steps.push({line:`${polyS([C.q,C.p,F0(),math.fraction(1)],yv)}=0`,why:`Substitute ${v} = ${yv} − ${fs(C.sh)} to remove the squared term, giving ${yv}³ + p${yv} + q = 0 with p = ${fs(C.p)} and q = ${fs(C.q)}.`,unchecked:true});
+  steps.push({line:`${U}=cbrt(${C.uA})`,why:`Cardano’s formula: ${U} = ∛(−q/2 + √(q²/4 + p³/27)).`,unchecked:true});
+  steps.push({line:`${V}=cbrt(${C.vA})`,why:`and ${V} = ∛(−q/2 − √(q²/4 + p³/27)). The roots are ${U} + ${V} and the two combinations with the complex cube roots of unity.`,unchecked:true});
+  C.roots.forEach((r,k)=>steps.push({line:`${v}=${addSh(r.e,C.sh)}`,why:`Root ${k+1}, approximately ${cc(r.x)}.`,unchecked:true}));
+  return true;
+}
+function quadFactor(t){
+  const L=t.reduce((m,f)=>lcm(m,Fd(f)),1),ic=t.map(f=>Fs(f)*Fn(f)*(L/Fd(f))),[a0,a1,a2,a3,a4]=ic;
+  const divs=n=>{const r=[];for(let i=1;i<=Math.min(Math.abs(n),3000);i++)if(n%i===0)r.push(i);return r};
+  for(const u of divs(a4)){const vv=a4/u;
+    for(const q0 of divs(a0))for(const sg of[1,-1]){const q=sg*q0,s=a0/q,det=vv*q-u*s;if(!Number.isInteger(s))continue;
+      if(det!==0){
+        const p=(a3*q-u*a1)/det,r=(vv*a1-s*a3)/det;
+        if(Number.isInteger(p)&&Number.isInteger(r)&&u*s+p*r+q*vv===a2)return[[q,p,u],[s,r,vv]].map(f=>f.map(n=>math.fraction(n)));
+      }else for(let p=-300;p<=300;p++){
+        const r=(a3-vv*p)/u;
+        if(Number.isInteger(r)&&s*p+q*r===a1&&u*s+p*r+q*vv===a2)return[[q,p,u],[s,r,vv]].map(f=>f.map(n=>math.fraction(n)));
+      }}}
+  return null;
+}
+function quarticRadical(t,v,steps){
+  const a=t[4],b=math.divide(t[3],a),c=math.divide(t[2],a),d=math.divide(t[1],a),e=math.divide(t[0],a),yv=v==='y'?'z':'y';
+  const f=x=>math.fraction(x),M=(...x)=>x.reduce((s,y)=>math.multiply(s,y));
+  if(!feq(a,1))steps.push({line:`${polyS([e,d,c,b,f(1)],v)}=0`,why:'Divide through by the leading coefficient.'});
+  const p=math.subtract(c,math.divide(M(3,b,b),8)),q=math.add(math.subtract(d,math.divide(M(b,c),2)),math.divide(M(b,b,b),8));
+  const r=math.add(math.subtract(math.add(math.subtract(e,math.divide(M(b,d),4)),math.divide(M(b,b,c),16)),0),math.divide(math.multiply(-3,M(b,b,b,b)),256)),sh=math.divide(b,4),shN=fnum(sh);
+  const xv=feq(sh,0)?v:yv;
+  if(!feq(sh,0))steps.push({line:`${polyS([r,q,p,F0(),f(1)],yv)}=0`,why:`Substitute ${v} = ${yv} − ${fs(sh)} to remove the cubic term, giving a depressed quartic ${yv}⁴ + p${yv}² + q${yv} + r = 0 with p = ${fs(p)}, q = ${fs(q)} and r = ${fs(r)}.`,unchecked:true});
+  const out=[];
+  if(feq(q,0)){
+    const[Z]=lets(v,1),Dl=math.subtract(M(p,p),math.multiply(4,r)),sD=Fn(Dl)===0?'0':(Fs(Dl)>0?surdS(Dl):`i*(${surdS(math.unaryMinus(Dl))})`),np=fs(math.unaryMinus(p));
+    steps.push({line:`${polyS([r,p,f(1)],Z)}=0`,why:`This is a quadratic in ${xv}², so let ${Z} = ${xv}².`,unchecked:true});
+    const sq=Fs(Dl)>0?sqrtF(Dl):(Fs(Dl)<0?sqrtF(math.unaryMinus(Dl)):F0()),half=math.divide(math.unaryMinus(p),2);
+    const zstr=sg=>{
+      if(sq){const h=math.divide(sq,2);return Fs(Dl)<0?`${feq(half,0)?'':fs(half)}${sg>0?(feq(half,0)?'':'+'):'-'}${feq(h,1)?'':fpar(h)+'*'}i`:fs(math.add(half,math.multiply(sg,h)))}
+      return feq(p,0)?`${sg>0?'':'-'}(${sD})/2`:`(${np}${sg>0?'+':'-'}${sD})/2`;
+    };
+    const zs=[zstr(1),zstr(-1)];
+    zs.forEach(z=>steps.push({line:`${Z}=${z}`,why:'Quadratic formula.',unchecked:true}));
+    zs.forEach(z=>[1,-1].forEach(sg=>{const ex=`${sg<0?'-':''}sqrt(${z})`,xn=math.subtract(math.multiply(sg,math.sqrt(math.evaluate(z))),shN);out.push({line:`${v}=${addSh(ex,sh)}`,x:xn})}));
+  }else{
+    const[Mn,U,V]=lets(v,3),res=[math.unaryMinus(M(q,q)),math.subtract(math.multiply(2,M(p,p)),math.multiply(8,r)),math.multiply(8,p),f(8)];
+    steps.push({line:`${polyS(res,Mn)}=0`,why:`Ferrari’s method: solve the resolvent cubic 8m³ + 8pm² + (2p² − 8r)m − q² = 0 for a positive root m (written ${Mn} here).`,unchecked:true});
+    let mN;
+    const rr=ratRoots(res).filter(x=>Fs(x)>0&&Fn(x)>0);
+    if(rr.length){mN=fnum(rr[0]);steps.push({line:`${Mn}=${fs(rr[0])}`,why:'The resolvent cubic has this rational positive root.',unchecked:true})}
+    else{
+      const C=cardano(res[3],res[2],res[1],res[0],U,V);
+      steps.push({line:`${U}=cbrt(${C.uA})`,why:`Cardano’s formula for the resolvent cubic: ${U} = ∛(−q′/2 + √(q′²/4 + p′³/27)), where p′ and q′ come from the cubic after removing its squared term.`,unchecked:true});
+      steps.push({line:`${V}=cbrt(${C.vA})`,why:`and ${V} = ∛(−q′/2 − √(q′²/4 + p′³/27)).`,unchecked:true});
+      const k=C.roots.map((r,i)=>({r,i})).filter(o=>Math.abs(o.r.x.im||0)<1e-7&&(o.r.x.re??o.r.x)>0).sort((x,y)=>(y.r.x.re??y.r.x)-(x.r.x.re??x.r.x))[0];
+      if(!k)return false;
+      mN=k.r.x.re??k.r.x;
+      steps.push({line:`${Mn}=${addSh(k.r.e,C.sh)}`,why:`The positive real root of the resolvent cubic, approximately ${cc(mN)}.`,unchecked:true});
+    }
+    for(const s1 of[1,-1])for(const s2 of[1,-1]){
+      const sgq=s1*Fs(q),mq=math.abs(q),inner=`${feq(p,0)?'':`2*${fpar(p)}+`}2*${Mn}${sgq>0?'+':'-'}sqrt(2)${feq(mq,1)?'':`*${fpar(mq)}`}/sqrt(${Mn})`,ex=`(${s1>0?'':'-'}sqrt(2*${Mn})${s2>0?'+':'-'}sqrt(-(${inner})))/2`;
+      const val=math.evaluate(ex,{[Mn]:mN});out.push({line:`${v}=${addSh(ex,sh)}`,x:math.subtract(val,shN)});
+    }
+  }
+  if(!rootsOk(t,out.map(o=>o.x)))return false;
+  out.forEach((o,k)=>steps.push({line:o.line,why:`Root ${k+1}, approximately ${cc(o.x)}.`,unchecked:true}));
+  return true;
+}
+function solveRoots(t,v,steps){
+  const n=t.length-1;
+  if(n===1){steps.push({line:`${v}=${fs(math.divide(math.unaryMinus(t[0]),t[1]))}`,why:`Solve the linear equation for ${v}.`});return true}
+  if(n===2)return quad(t,v,steps);
+  const r=ratRoot(t);
+  if(!r){
+    if(n===4){
+      const qf=quadFactor(t);
+      if(qf){
+        steps.push({line:`(${polyS(qf[0],v)})(${polyS(qf[1],v)})=0`,why:'The quartic factors into two quadratics (found by testing integer factor pairs).'});
+        for(const f of qf){steps.push({line:`${polyS(f,v)}=0`,why:'A product is zero when one of its factors is zero.',unchecked:true});quad(f,v,steps)}
+        return true;
+      }
+    }
+    return n===3?cubicRadical(t,v,steps):quarticRadical(t,v,steps);
+  }
+  const q=deflate(t,r);
+  steps.push({line:`(${xm(r,v)})(${polyS(q,v)})=0`,why:`The rational root theorem gives ${v} = ${fs(r)} as a root, so (${xm(r,v)}) is a factor. Divide it out.`});
+  rootLines(r,v,steps,'A product is zero when one of its factors is zero.');
+  steps.push({line:`${polyS(q,v)}=0`,why:'Now solve the remaining factor.',unchecked:true});
+  return solveRoots(q,v,steps);
+}
+const sx4=n=>{const t=sx2(n);if(/[a-zA-Z]\(|\//.test(t))return t;try{return ts(math.rationalize(n))}catch(e){return t}};
+function offImplicit(eL,eR,ds,note){
+  const node=math.parse(`(${eL})-(${eR})`),Aq=math.derivative(node,ds),A=sx4(Aq);
+  if(vars(A).includes(ds))return{msg:`This equation is not linear in ${disp(ds)}.`};
+  if(eL.trim()===ds&&!vars(eR).includes(ds))return{msg:'This is already solved, so there is nothing left to do.'};
+  const B=sx4(node.transform(m=>m.isSymbolNode&&m.name===ds?new math.ConstantNode(0):m)),nB=sx4(math.parse(`-(${B})`));
+  const Ap=/ [+-] /.test(A)?`(${A})`:A,steps=[];
+  steps.push({line:A==='1'?`${ds}=${nB}`:`${Ap} ${ds}=${nB}`,why:`Keep the terms with ${disp(ds)} on the left and move everything else to the right.`});
+  if(A!=='1')steps.push({line:`${ds}=${sx2(math.parse(`-(${B})/(${A})`))}`,why:`Divide both sides by ${A}.`});
+  return{steps};
+}
+function offEq(line){
+  const raw=clean(line);
+  if(/d\/d[a-zA-Z]\s*\(/.test(raw)){
+    const[Lr,Rr]=raw.split('='),nl=`${sx4(math.parse(expand(Lr)))}=${sx4(math.parse(expand(Rr)))}`,rest=offEq(nl);
+    return{steps:[{line:nl,why:'Carry out the differentiation on each side.'},...(rest.steps||[])],msg:rest.msg};
+  }
+  if(/\bint\s*\(/.test(raw))return{msg:'This integral line is already written as an equation, so there is nothing left to do.'};
+  const[L,R]=raw.split('='),eL=expand(L),eR=expand(R),names=[...new Set([...vars(eL),...vars(eR)])],ds=names.find(n=>DS.test(n));
+  if(ds)return offImplicit(eL,eR,ds);
+  if(!names.length)return{msg:'This line has no unknown to solve for.'};
+  if(names.length>1&&implicitOn()&&names.includes('x')&&names.includes('y')){
+    const dl=`d/dx(${ts(math.parse(L))})=d/dx(${ts(math.parse(R))})`,rest=offEq(dl);
+    return{steps:[{line:dl,why:'Differentiate both sides with respect to x, treating y as a function of x.'},...(rest.steps||[])],msg:rest.msg};
+  }
+  if(names.length>1)return{msg:names.includes('x')&&names.includes('y')?'This line has both x and y. If y depends on x, tick “Treat y as a function of x” above the lines and press Solve offline again. Otherwise the offline solver needs one unknown at a time.':`The offline solver handles one unknown at a time, and this line has ${names.join(', ')}.`};
+  const v=names[0],lc=coeffs(`(${eL})`,v),rc=coeffs(`(${eR})`,v);
+  if(!lc||!rc)return{msg:'The offline solver handles polynomial equations up to degree 4. Use Solve ▸ (needs Claude) for other kinds.'};
+  if((L.trim()===v&&rc.length===1)||(R.trim()===v&&lc.length===1))return{msg:'This is already solved, so there is nothing left to do.'};
+  const steps=[],LS=polyS(lc,v),RS=polyS(rc,v);
+  if(nz(`${LS}=${RS}`)!==nz(raw))steps.push({line:`${LS}=${RS}`,why:'Expand the brackets and collect like terms on each side.'});
+  const n2=Math.max(lc.length,rc.length),t=[];for(let k=0;k<n2;k++)t.push(math.subtract(cfk(lc,k),cfk(rc,k)));
+  while(t.length>1&&Fn(t[t.length-1])===0)t.pop();
+  const n=t.length-1;
+  if(n===0)return{steps,msg:feq(t[0],0)?'Both sides are the same, so this is true for every value.':'The two sides can never be equal, so there is no solution.'};
+  if(n===1){
+    const A=t[1],B=math.subtract(cfk(rc,0),cfk(lc,0));
+    if(rc.length>1||!feq(cfk(lc,0),0))steps.push({line:`${polyS([F0(),A],v)}=${fs(B)}`,why:`Move the ${v} terms to the left and the constants to the right.`});
+    if(!feq(A,1))steps.push({line:`${v}=${fs(math.divide(B,A))}`,why:`Divide both sides by ${fs(A)}.`});
+    return{steps};
+  }
+  if(!(rc.length===1&&feq(rc[0],0)))steps.push({line:`${polyS(t,v)}=0`,why:'Move everything to one side so the equation equals 0.'});
+  if(!solveRoots(t,v,steps))return{steps,msg:'The offline solver could not find exact roots for this one.'};
+  return{steps};
+}
+/* derivatives, one rule at a time */
+const pr=x=>{while(x.isParenthesisNode)x=x.content;return(x.isOperatorNode&&(x.op==='+'||x.op==='-'||x.fn==='unaryMinus'))?`(${ts(x)})`:ts(x)};
+const dv=(n,v)=>hasV(n,v)||(implicitOn()&&(DEP[v]||[]).some(w=>hasV(n,w)));
+const plainD=(n,v)=>{while(n.isParenthesisNode)n=n.content;return plain(n,v)||(implicitOn()&&n.isSymbolNode&&(DEP[v]||[]).includes(n.name))};
+function elemD(n,v){
+  while(n.isParenthesisNode)n=n.content;
+  if(!dv(n,v)||n.isSymbolNode)return true;
+  if(n.isFunctionNode&&n.args.length===1&&plainD(n.args[0],v))return true;
+  if(n.isOperatorNode&&n.op==='^'){const[g,x]=n.args;if(plainD(g,v)&&!dv(x,v))return true;if(!dv(g,v)&&plainD(x,v))return true}
+  return false;
+}
+function ruleD(n,v){
+  while(n.isParenthesisNode)n=n.content;
+  const D=x=>`d/d${v}(${ts(x)})`;
+  if(n.isOperatorNode&&n.fn==='unaryMinus')return{s:`-${D(n.args[0])}`,why:'Pull out the minus sign (constant multiple rule).'};
+  if(n.isOperatorNode&&n.args.length===2){
+    const[a,b]=n.args;
+    if(n.op==='+'||n.op==='-')return{s:`${D(a)}${n.op}${D(b)}`,why:'Sum rule: differentiate each term separately.'};
+    if(n.op==='*'){
+      if(!dv(a,v))return{s:`${pr(a)}*${D(b)}`,why:`Constant multiple rule: keep the constant ${ts(a)} and differentiate the rest.`};
+      if(!dv(b,v))return{s:`${pr(b)}*${D(a)}`,why:`Constant multiple rule: keep the constant ${ts(b)} and differentiate the rest.`};
+      return{s:`${D(a)}*${pr(b)}+${pr(a)}*${D(b)}`,why:`Product rule: (uv)′ = u′v + uv′, with u = ${ts(a)} and v = ${ts(b)}.`};
+    }
+    if(n.op==='/'){
+      if(!dv(b,v))return{s:`${D(a)}/${pr(b)}`,why:`Constant multiple rule: differentiate the top and keep dividing by ${ts(b)}.`};
+      return{s:`(${D(a)}*${pr(b)}-${pr(a)}*${D(b)})/(${ts(b)})^2`,why:`Quotient rule: (u/v)′ = (u′v − uv′)/v², with u = ${ts(a)} and v = ${ts(b)}.`};
+    }
+    if(n.op==='^'){
+      if(dv(a,v)&&!dv(b,v))return{s:`${pr(b)}*(${ts(a)})^(${ts(b)}-1)*${D(a)}`,why:`Power rule with the chain rule: bring down the exponent, lower it by 1, then multiply by the derivative of the inside, ${ts(a)}.`};
+      if(!dv(a,v)&&dv(b,v))return{s:`${ts(n)}*${ts(a)==='e'?'':`log(${ts(a)})*`}${D(b)}`,why:`Chain rule for an exponential: the function itself${ts(a)==='e'?'':' times ln of the base'}, times the derivative of the exponent ${ts(b)}.`};
+    }
+  }
+  if(n.isFunctionNode&&n.args.length===1&&n.fn.name){
+    const g=n.args[0],fp=math.derivative(`${n.fn.name}(u)`,'u').transform(m=>m.isSymbolNode&&m.name==='u'?g:m);
+    return{s:`${pr(fp)}*${D(g)}`,why:`Chain rule: the derivative of ${n.fn.name} evaluated at the inside, times the derivative of the inside, ${ts(g)}.`};
+  }
+  return null;
+}
+function eqContext(e){
+  for(const l of P().lines){
+    const t=clean(l).trim(),sp=t.split('=');
+    if(sp.length!==2||/\b(int|lim|ev)\s*\(|d\/d[a-zA-Z]\s*\(/.test(t))continue;
+    try{if(sameF(expand(sp[0]),expand(e)).s==='ok')return sp[1]}catch(x){}
+  }
+  return null;
+}
+function offDeriv(D){
+  const v=D.v,steps=[],re0=`d\\/d${v}\\s*\\(`;let cur=`d/d${v}(${D.e})`;
+  for(let it=0;it<8;it++){
+    const re=new RegExp(re0,'g');let m,out='',last=0;const why=[];
+    while((m=re.exec(cur))){
+      const{args,end}=callAt(cur,m.index+m[0].length-1),node=math.parse(args[0]),r=elemD(node,v)?null:ruleD(node,v);
+      if(r){const wrap=m.index>0||end+1<cur.length;out+=cur.slice(last,m.index)+(wrap?`(${r.s})`:r.s);why.push(r.why)}else out+=cur.slice(last,end+1);
+      last=end+1;re.lastIndex=last;
+    }
+    if(!why.length)break;
+    cur=out+cur.slice(last);steps.push({line:cur,why:why.join(' ')});
+  }
+  const pieces=[],re=new RegExp(re0,'g');let m;
+  while((m=re.exec(cur))){const{args,end}=callAt(cur,m.index+m[0].length-1);{const t=`d/d${v}(${args[0]}) = ${sx2(math.parse(expand(`d/d${v}(${args[0]})`)))}`;if(!pieces.includes(t))pieces.push(t)}re.lastIndex=end+1}
+  const ev=expand(cur),simp=sx4(math.parse(ev));
+  if(pieces.length)steps.push({line:nz(ev)===nz(simp)?simp:ev,why:`Differentiate the basic pieces: ${pieces.join('; ')}.`});
+  if(nz(simp)!==nz(steps.length?steps[steps.length-1].line:''))steps.push({line:simp,why:'Simplify.'});
+  if(implicitOn()&&vars(ev).some(n=>DS.test(n))){
+    const B=eqContext(D.e);
+    if(B!==null){
+      const nl=`${simp}=${sx2(math.parse(expand(`d/d${v}(${B})`)))}`,rest=offEq(nl);
+      steps.push({line:nl,why:`Your page says this expression equals ${B.trim()}, so its derivative equals the derivative of ${B.trim()}.`,unchecked:true},...(rest.steps||[]));
+      return{steps,msg:rest.msg};
+    }
+    return{steps,msg:'To isolate dy/dx, write the full equation first (for example 2x^2-3xy+y^3=4) and use Solve offline on that line.'};
+  }
+  return{steps};
+}
+/* integrals */
+const lin=(u,v)=>{try{const d=math.derivative(u,v);return hasV(d,v)?null:math.evaluate(ts(d))}catch(e){return null}};
+function integTerm(g,v){
+  while(g.isParenthesisNode)g=g.content;
+  const S=x=>sx2(math.parse(x));
+  if(plain(g,v))return{F:`${v}^2/2`,why:'∫x dx = x²/2.'};
+  if(g.isFunctionNode&&g.args.length===1&&g.fn.name){
+    const u=ts(g.args[0]),a=lin(g.args[0],v);if(a===null||a===0)return null;
+    const A=a===1?'':`/${a<0?`(${a})`:a}`,f=g.fn.name,T={
+      sin:[`-cos(${u})${A}`,'∫sin(u) du = −cos(u)'],cos:[`sin(${u})${A}`,'∫cos(u) du = sin(u)'],tan:[`-log(abs(cos(${u})))${A}`,'∫tan(u) du = −ln|cos(u)|'],
+      exp:[`exp(${u})${A}`,'∫eᵘ du = eᵘ'],sqrt:[`(2/3)*(${u})^(3/2)${A}`,'∫√u du = (2/3)u^(3/2)'],log:[`((${u})*log(${u})-(${u}))${A}`,'∫ln(u) du = u ln(u) − u']}[f];
+    return T?{F:S(T[0]),why:T[1]+(a===1?'.':`, divided by ${a} because the inside is ${u} (reverse chain rule).`)}:null;
+  }
+  if(g.isOperatorNode&&g.op==='^'){
+    const[b,x]=g.args;
+    if(!hasV(x,v)&&hasV(b,v)){
+      const a=lin(b,v),n=ratl(math.evaluate(ts(x)));if(a===null||a===0||!n)return null;
+      if(feq(n,-1))return{F:S(`log(abs(${ts(b)}))/(${a})`),why:'∫1/u du = ln|u|'+(a===1?'.':`, divided by ${a} (reverse chain rule).`)};
+      const n1=math.add(n,1);return{F:S(`(${ts(b)})^(${fs(n1)})/((${fs(n1)})*(${a}))`),why:`Power rule: ∫uⁿ du = uⁿ⁺¹/(n+1)${a===1?'.':`, divided by ${a} (reverse chain rule).`}`};
+    }
+    if(hasV(x,v)&&!hasV(b,v)){
+      const a=lin(x,v);if(a===null||a===0)return null;
+      return ts(b)==='e'?{F:S(`e^(${ts(x)})/(${a})`),why:'∫eᵘ du = eᵘ'+(a===1?'.':`, divided by ${a}.`)}:{F:S(`(${ts(b)})^(${ts(x)})/(log(${ts(b)})*(${a}))`),why:'∫aᵘ du = aᵘ/ln(a).'};
+    }
+  }
+  if(g.isOperatorNode&&g.op==='/'&&!hasV(g.args[0],v)){
+    const num=ts(g.args[0]),r=integTerm(math.parse(`(${ts(g.args[1])})^(-1)`),v);
+    if(r)return{F:S(`(${num})*(${r.F})`),why:r.why};
+    const d=g.args[1];if(d.isOperatorNode&&d.op==='^'&&!hasV(d.args[1],v)){const r2=integTerm(math.parse(`(${ts(d.args[0])})^(-(${ts(d.args[1])}))`),v);if(r2)return{F:S(`(${num})*(${r2.F})`),why:r2.why}}
+  }
+  return null;
+}
+function flat(n,sg,out){
+  while(n.isParenthesisNode)n=n.content;
+  if(n.isOperatorNode&&n.fn==='unaryMinus')return flat(n.args[0],-sg,out);
+  if(n.isOperatorNode&&n.args.length===2&&(n.op==='+'||n.op==='-')){flat(n.args[0],sg,out);flat(n.args[1],n.op==='-'?-sg:sg,out);return out}
+  out.push({sg,n});return out;
+}
+function csplit(n,v){
+  while(n.isParenthesisNode)n=n.content;
+  if(n.isOperatorNode&&n.op==='*'&&n.args.length===2){const a=csplit(n.args[0],v),b=csplit(n.args[1],v);return{c:a.c.concat(b.c),g:a.g&&b.g?math.parse(`(${ts(a.g)})*(${ts(b.g)})`):(a.g||b.g)}}
+  if(n.isOperatorNode&&n.op==='/'&&n.args.length===2&&!hasV(n.args[1],v)){const a=csplit(n.args[0],v);return{c:a.c.concat([`1/${pr(n.args[1])}`]),g:a.g}}
+  if(!hasV(n,v))return{c:[pr(n)],g:null};
+  return{c:[],g:n};
+}
+function byParts(g,v){
+  if(!(g.isOperatorNode&&g.op==='*'&&g.args.length===2))return null;
+  let A=null,B=null;
+  for(const[p,q]of[[g.args[0],g.args[1]],[g.args[1],g.args[0]]]){
+    const c=coeffs(`(${ts(p)})`,v);
+    if(c&&c.length>1&&hasV(q,v)&&!coeffs(`(${ts(q)})`,v)&&integTerm(q,v)){A=c;B=q;break}
+  }
+  if(!A)return null;
+  const Pk=[A];while(Pk[Pk.length-1].length>1){const c=Pk[Pk.length-1];Pk.push(c.slice(1).map((f,i)=>math.multiply(f,i+1)))}
+  const W=[ts(B)],V=[];
+  for(let k=0;k<Pk.length;k++){const r=antiderivative(W[k],v);if(r.msg)return null;V.push(r.F);W.push(r.F)}
+  const wp=t=>/[+\-]/.test(t.slice(1))?`(${t})`:t,steps=[],L=Pk.length;
+  for(let k=0;k<L-1;k++){
+    const P0=polyS(Pk[k],v),P1=polyS(Pk[k+1],v);
+    steps.push({line:`int(${wp(P0)}*(${W[k]}),${v})=${wp(P0)}*(${V[k]})-int(${wp(P1)}*(${V[k]}),${v})`,why:`Integration by parts: ∫u dv = uv − ∫v du, with u = ${P0} and dv = ${W[k]} dx. Differentiating u lowers the polynomial's degree.`});
+  }
+  const c0=fs(Pk[L-1][0]);
+  steps.push({line:`int(${c0}*(${W[L-1]}),${v})=${c0}*(${V[L-1]})+C`,why:'The remaining integral is a basic one.'});
+  const F=sx2(math.parse(Pk.map((P,k)=>`${k%2?'-':'+'}(${polyS(P,v)})*(${V[k]})`).join('')));
+  steps.push({line:`int(${ts(g)},${v})=${F}+C`,why:'Substitute back and simplify.'});
+  return{F,steps,why:'Integration by parts, repeated.'};
+}
+function antiderivative(f,v){
+  const node=math.parse(expand(f)),cfs=coeffs(`(${ts(node)})`,v),steps=[];let terms;
+  if(cfs){
+    if(nz(polyS(cfs,v))!==nz(ts(node))&&nz(polyS(cfs,v))!==nz(f))steps.push({line:`int(${polyS(cfs,v)},${v})`,why:'Expand the brackets and collect like terms before integrating.'});
+    terms=[];for(let k=cfs.length-1;k>=0;k--){if(Fn(cfs[k])===0)continue;const m=math.abs(cfs[k]);terms.push({sg:Fs(cfs[k]),c:feq(m,1)&&k>0?[]:[fs(m).includes('/')?`(${fs(m)})`:fs(m)],g:k===0?null:math.parse(k===1?v:`${v}^${k}`)})}
+  }else terms=flat(node,1,[]).map(t=>({sg:t.sg,...csplit(t.n,v)}));
+  const parts=terms.map(t=>({...t,I:t.g?integTerm(t.g,v):{F:`${v}`,why:`The integral of a constant is the constant times ${v}.`}}));
+  const bad=parts.find(p=>!p.I);
+  if(bad&&parts.length===1&&bad.g){
+    const b=byParts(bad.g,v);
+    if(b){
+      let st=steps.concat(b.steps),F=b.F;
+      if(bad.c.length||bad.sg<0){
+        const k=(bad.sg<0?'-':'')+(bad.c.length?bad.c.join('*'):'1');
+        F=sx2(math.parse(`(${k})*(${b.F})`));
+        st=steps.concat([{line:`${k}*int(${ts(bad.g)},${v})`,why:'Take the constant factor outside the integral.'}],b.steps,[{line:`int(${ts(node)},${v})=${F}+C`,why:'Multiply by the constant and simplify.'}]);
+      }
+      return{F,raw:F,why:b.why,steps:st,bp:true};
+    }
+  }
+  if(bad)return{msg:`The offline solver has no rule for ${ts(bad.g)}. Use Solve ▸ (needs Claude) for harder integrals such as products that need integration by parts.`,steps};
+  const sgn=(p,i)=>p.sg<0?'-':(i?'+':'');
+  const cS=p=>p.c.length?p.c.join('*')+'*':'';
+  if(terms.length>1||terms.some(t=>t.c.length))steps.push({line:terms.map((p,i)=>`${sgn(p,i)}${p.g?`${cS(p)}int(${ts(p.g)},${v})`:`int(${p.c.join('*')},${v})`}`).join(''),why:'Integrate term by term and take constant factors outside the integral.'});
+  const body=parts.map((p,i)=>`${sgn(p,i)}${p.g?`${cS(p)}(${p.I.F})`:`(${p.c.join('*')})*${v}`}`).join(''),why=[...new Set(parts.map(p=>p.I.why))].join(' ');
+  return{F:sx2(math.parse(body)),raw:body,why,steps};
+}
+function offInt(I){
+  const a=antiderivative(I.f,I.v);if(a.msg)return{steps:a.steps,msg:a.msg};
+  if(a.bp)return{steps:a.steps};
+  const steps=a.steps,raw=`${a.raw}+C`,simp=`${a.F}+C`;
+  steps.push({line:nz(raw)===nz(simp)?simp:raw,why:a.why});
+  if(nz(raw)!==nz(simp))steps.push({line:simp,why:'Simplify.'});
+  return{steps};
+}
+function boundInts(s,lo,hi){
+  let out='',last=0,m;const re=/\bint\s*\(/g;
+  while((m=re.exec(s))){const{args,end}=callAt(s,m.index+m[0].length-1);if(args.length===2){out+=s.slice(last,end)+`,${lo},${hi})`;last=end+1;re.lastIndex=last}}
+  return out+s.slice(last);
+}
+function offDef(args){
+  const[f,v0,lo,hi]=args,v=v0.trim(),a=antiderivative(f,v);
+  let val;
+  try{val=math.evaluate(expand(`int(${f},${v},${lo},${hi})`))}catch(e){if(/diverge|undefined|not a real/i.test(e.message))return{msg:e.message.replace(/\s*\(or converges too slowly to evaluate\)/,'')+' So there is no finite value to find.'};throw e}
+  if(a.msg)return{steps:[{line:nice(val),why:'No exact rule applies, so this is a numerical estimate (Simpson’s rule).'}],msg:'The offline solver could not find an antiderivative.'};
+  const steps=a.steps.map(t=>a.bp?t:{...t,line:boundInts(t.line,lo.trim(),hi.trim())}),sub=x=>ts(math.parse(a.F).transform(m=>m.isSymbolNode&&m.name===v?math.parse(`(${x.trim()})`):m));
+  if(a.bp&&steps.length)steps[0].unchecked=true;
+  steps.push({line:`ev(${a.F},${v},${lo.trim()},${hi.trim()})`,why:`Find an antiderivative F — ${a.why} Then apply the bounds: F(upper) − F(lower).`,unchecked:!!a.bp});
+  steps.push({line:`(${sub(hi)})-(${sub(lo)})`,why:'Substitute the upper and lower bounds into F.'});
+  steps.push({line:nice(val),why:'Evaluate the arithmetic.'});
+  return{steps};
+}
+function offLim(args){
+  const[f0,v0,a0]=args,v=v0.trim(),A=a0.trim();let f=f0;const steps=[];
+  const val=num=>{try{return math.evaluate(num)}catch(e){return NaN}};
+  const finite=!/inf/.test(A);
+  if(finite){
+    for(let it=0;it<3;it++){
+      const node=math.parse(expand(f)),at=n=>{try{const y=n.evaluate({[v]:math.evaluate(expand(A))});return typeof y==='number'?y:NaN}catch(e){return NaN}};
+      const direct=at(node.compile?node:math.compile(expand(f)));
+      if(isFinite(direct)){steps.push({line:nice(direct),why:`Substitute ${v} = ${A}; the function is defined there, so that is the limit.`});return{steps}}
+      if(node.isOperatorNode&&node.op==='/'){
+        const N=math.compile(ts(node.args[0])),Dn=math.compile(ts(node.args[1])),c=math.evaluate(expand(A));
+        const n0=N.evaluate({[v]:c}),d0=Dn.evaluate({[v]:c});
+        if(Math.abs(n0)<1e-9&&Math.abs(d0)<1e-9){
+          f=`(${sx2(math.derivative(node.args[0],v))})/(${sx2(math.derivative(node.args[1],v))})`;
+          steps.push({line:`lim(${f},${v},${A})`,why:'Substituting gives 0/0, so apply L’Hôpital’s rule: differentiate the top and bottom separately.'});continue;
+        }
+      }
+      break;
+    }
+  }
+  const v2=limit(expand(f),v,A);
+  steps.push({line:nice(v2),why:'Evaluate the limit numerically from both sides.'+(steps.length?'':' (No exact rule applies, so this is an estimate.)')});
+  return{steps};
+}
+const TRIG_RULES=[
+ ['sin(n1)^2 + cos(n1)^2 -> 1','sin²x + cos²x = 1 (Pythagorean identity)'],['cos(n1)^2 + sin(n1)^2 -> 1','sin²x + cos²x = 1 (Pythagorean identity)'],
+ ['cos(n1)^2 - sin(n1)^2 -> cos(2*n1)','cos²x − sin²x = cos(2x) (double-angle identity)'],['sin(n1)^2 - cos(n1)^2 -> -cos(2*n1)','sin²x − cos²x = −cos(2x) (double-angle identity)'],
+ ['2*sin(n1)*cos(n1) -> sin(2*n1)','2 sin x cos x = sin(2x) (double-angle identity)'],
+ ['1 - sin(n1)^2 -> cos(n1)^2','1 − sin²x = cos²x (Pythagorean identity)'],['1 - cos(n1)^2 -> sin(n1)^2','1 − cos²x = sin²x (Pythagorean identity)'],
+ ['sin(n1)/cos(n1) -> tan(n1)','sin x / cos x = tan x'],['cos(n1)/sin(n1) -> cot(n1)','cos x / sin x = cot x'],
+ ['1/cos(n1) -> sec(n1)','1 / cos x = sec x'],['1/sin(n1) -> csc(n1)','1 / sin x = csc x'],['tan(n1)*cos(n1) -> sin(n1)','tan x · cos x = sin x']];
+function trigSteps(node){
+  const steps=[];let cur=node;
+  for(let k=0;k<3;k++){
+    let hit=null;
+    for(const[r,why]of TRIG_RULES){try{const o=math.simplify(cur,[r]);if(ts(o)!==ts(cur)){hit={o,why};break}}catch(e){}}
+    if(!hit)break;
+    cur=math.simplify(hit.o);steps.push({line:ts(cur),why:`Use the identity ${hit.why}.`});
+  }
+  return steps;
+}
+function offSimplify(t){
+  const calc=/\b(int|lim|ev)\s*\(|d\/d[a-zA-Z]\s*\(/.test(t),e=expand(t),node=math.parse(e),names=vars(e);
+  if(/\b(sin|cos|tan)\(/.test(e)){const ts2=trigSteps(node);if(ts2.length)return{steps:ts2}}
+  let target,why=calc?'Carry out the calculus operations and simplify.':'Simplify the expression.';
+  if(names.length===0){const v=math.evaluate(e);target=nice(v);why=calc?why:'Evaluate the arithmetic.'}
+  else{if(names.length===1){const c=coeffs(`(${e})`,names[0]);if(c){target=polyS(c,names[0]);why=calc?why:'Expand the brackets and collect like terms.'}}if(!target)target=sx2(node)}
+  if(nz(target)===nz(t))return{msg:'This is already in its simplest form, so there is nothing left to do.'};
+  return{steps:[{line:target,why}]};
+}
+function offlineSteps(line){
+  const t=clean(line).trim();
+  try{
+    const D=bareD(t);if(D)return offDeriv(D);
+    const I=bareInt(t);if(I)return offInt(I);
+    if(/^int\(/.test(t)){const c=callAt(t,3);if(c.end===t.length-1&&c.args.length===4)return offDef(c.args)}
+    if(/^lim\(/.test(t)){const c=callAt(t,3);if(c.end===t.length-1&&c.args.length===3)return offLim(c.args)}
+    const k=t.split('=').length;
+    if(k>2)return{msg:'Use one = per line.'};
+    return k===2?offEq(t):offSimplify(t);
+  }catch(e){return{msg:`The offline solver could not work with this line (${e.message||'error'}).`}}
+}
+function fmtT(ms){
+  const t=ms/1000;
+  if(t<0.01)return 'under 0.01 seconds';
+  const n=Number(t.toFixed(t<1?2:1));
+  return n===1?'1 second':`${n} seconds`;
+}
+function solveOffline(li){
+  const note=$('lines').children[li].querySelector('.note');
+  const t0=performance.now(),r=offlineSteps(P().lines[li]),took=performance.now()-t0;
+  let steps=(r.steps||[]).map(s=>({...s,line:disp(tidy(s.line)),why:disp(s.why.replace(/ ?([\^*\/]) ?/g,'$1'))}));
+  const k=steps.findIndex(s=>!validLine(s.line));if(k>=0)steps=steps.slice(0,k);
+  if(!steps.length){note.textContent=r.msg||'This is already in its simplest form, so there is nothing left to do.';$('solvedIn').textContent=`Checked in ${fmtT(took)}`;return}
+  if(r.msg)steps[steps.length-1].why+=' '+r.msg;
+  $('solvedIn').textContent=`Solved in ${fmtT(took)}`;
+  fixM();
+  P().lines=P().lines.slice(0,li+1).concat(steps.map(s=>s.line));
+  P().meta=P().meta.slice(0,li+1).concat(steps.map(s=>({note:s.why,skip:!!s.unchecked})));
+  save();renderLines();
+}
+
+function maskKey(k){return k?k.slice(0,7)+'…'+k.slice(-4):''}
+function refreshSettings(){
+  const w=keyWhere(),built=!!window.claude;
+  $('sintro').textContent=built?'This page already has a built-in Claude connection, so you do not need a key here. You can still add one to use your own account.':'Solve ▸ and Next step use Claude. Add your own API key to turn them on. Solve offline never needs a key.';
+  $('akey').value='';$('akey').placeholder=w?`Saved: ${maskKey(getKey())} (leave blank to keep it)`:'sk-ant-…';
+  $('amodel').value=getModel();$('aremember').checked=w==='device';
+  $('astat').textContent=w==='device'?'A key is saved on this device.':w==='tab'?'A key is set for this tab only.':'No key saved.';
+}
+$('settings').onclick=()=>{refreshSettings();$('setd').showModal()};
+$('sclose').onclick=()=>$('setd').close();
+$('asave').onclick=()=>{
+  const k=$('akey').value.trim()||getKey();
+  if(k&&!/^sk-ant-/.test(k)){$('astat').textContent='That does not look like an Anthropic API key (it should start with sk-ant-).';return}
+  storeKey(k,$('aremember').checked);storeModel($('amodel').value.trim());
+  $('akey').value='';refreshSettings();$('astat').textContent=k?'Saved. You can close this and use Solve ▸.':'No key saved.';
+};
+$('aclear').onclick=()=>{storeKey('',false);storeModel('');refreshSettings();$('astat').textContent='Key removed.'};
+$('atest').onclick=async()=>{
+  const k=$('akey').value.trim()||getKey();
+  if(!k){$('astat').textContent='Enter a key first.';return}
+  storeModel($('amodel').value.trim());$('astat').textContent='Testing…';
+  try{const r=await apiJson('Reply with only this JSON array: [1]',k);$('astat').textContent=Array.isArray(r)?'The key works.':'Connected, but the reply was unexpected.'}
+  catch(e){$('astat').textContent=e.message}
+};
+function antid(I,F){
+  try{
+    const d=dTotal(F.replace(/[+-]\s*C\b/g,''),I.v);
+    const r=sameF(d,expand(I.f));
+    if(r.s==='ok')return r;
+    const f=expand(I.f),k=rl(f,d,[...new Set([...vars(f),...vars(d)])]);
+    const cc=(()=>{try{return chainCand(math.parse(f),I.v)}catch(e){return null}})();
+    return{s:'bad',m:neg(k)?'The antiderivative has the wrong sign.':k.t==='mult'?`Differentiating this gives ${fmt(k.c)} times the integrand, so scale your answer by ${fmt(1/k.c)}${cc?' (reverse chain rule: divide by the derivative of the inside)':''}.`:'Differentiating this does not give back the integrand; recheck the antiderivative.'};
+  }catch(e){return{s:'bad',m:e.message||'Cannot verify this integral'}}
+}
+function fn(str){
+  const p=expand(str).split('=');
+  if(p.length>2)throw Error('Use one = per line');
+  if(p.length===1)return{eq:false,src:p[0],L:p[0]};
+  if(!p[0].trim()||!p[1].trim())throw Error('Missing a side');
+  return{eq:true,src:`(${p[0]})-(${p[1]})`,L:p[0],R:p[1]};
+}
+function vars(src){
+  const v=new Set();
+  math.parse(src).traverse((n,_,parent)=>{if(n.isSymbolNode&&!(n.name in math)&&!(parent&&parent.isFunctionNode&&parent.fn===n))v.add(n.name)});
+  return[...v];
+}
+/* complex-safe numbers: sqrt(-4), i, complex roots all compare correctly */
+const cx=v=>typeof v==='number'?math.complex(v,0):math.isComplex(v)?v:null;
+const fin=c=>!!c&&isFinite(c.re)&&isFinite(c.im);
+const cabs=c=>Math.hypot(c.re,c.im);
+const ctol=(p,q)=>Math.hypot(p.re-q.re,p.im-q.im)<=1e-6*Math.max(1,cabs(p),cabs(q));
+function check(prev,cur){
+  const sp=cur.split('='),A=bareInt(prev),D=bareD(prev);
+  if(D&&sp.length===1){const r=sameF(expand(prev),expand(cur));if(r.s==='ok')return r;const m=derivWhy(D,cur);if(m)return{s:'bad',m:m.replace(/ ?\^ ?/g,'^').replace(/ \* /g,'\u00b7')}}
+  if(sp.length===2&&bareInt(sp[0]))return antid(bareInt(sp[0]),sp[1]);
+  if(A&&bareInt(cur))return sameF(expand(A.f),expand(bareInt(cur).f));
+  if(A&&sp.length===1)return antid(A,cur);
+  try{
+    const LA=lift(prev),LB=lift(cur);
+    if(LA.ints.length||LB.ints.length){
+      const v=(LB.ints[0]||LA.ints[0]).v,pe=prev.includes('=');
+      if(LB.ints.length&&sp.length===2){const r=sameF(dTotal(sp[0],v),dTotal(sp[1],v));return r.s==='ok'?r:{s:'bad',m:'Differentiating both sides does not give the same result, so this integration step is wrong.'}}
+      if(!pe&&sp.length===1){const r=sameF(dTotal(prev,v),dTotal(cur,v));return r.s==='ok'?r:{s:'bad',m:'Differentiating this does not match the line above, so the integral was changed.'}}
+      return{s:'bad',m:'Cannot compare an integral line with this line'};
+    }
+  }catch(e){return{s:'bad',m:e.message||'Cannot check this integral step'}}
+  let a,b;
+  try{a=fn(prev);b=fn(cur)}catch(e){return{s:'bad',m:e.message}}
+  if(a.eq&&b.eq){try{const nb=vars(b.src).find(n=>DS.test(n)&&!vars(a.src).includes(n));if(nb)a={...a,src:implD(math.parse(a.src),/_d([a-zA-Z])/.exec(nb)[1])}}catch(e){}}
+  let f,g,names;
+  try{f=math.compile(a.src);g=math.compile(b.src);names=[...new Set([...vars(a.src),...vars(b.src)])]}
+  catch(e){return{s:'bad',m:'Cannot read this line'}}
+  if(a.eq!==b.eq)return{s:'bad',m:a.eq?'Previous line is an equation':'Previous line is an expression'};
+  const ds=names.find(n=>DS.test(n));
+  if(a.eq&&ds&&vars(a.src).includes(ds)&&vars(b.src).includes(ds)){const r=pSolve(f,g,names,ds);if(r!==null)return r?{s:'ok'}:{s:'bad',m:`Solving this for ${ds.replace('_','/')} gives a different result from the line above; check the signs and factors you moved.`}}
+  const tol=ctol;
+  let ratio=null,used=0;
+  try{
+    for(let i=0;i<10;i++){
+      const sc={};names.forEach(n=>sc[n]=0.6+Math.random()*3.4);
+      const x=cx(f.evaluate(sc)),y=cx(g.evaluate(sc));
+      if(!fin(x)||!fin(y))continue;
+      used++;
+      if(!a.eq){if(!tol(x,y))return{s:'bad',m:why(a,b)};continue}
+      if(cabs(x)<1e-9){if(cabs(y)<1e-9)continue;return{s:'bad',m:why(a,b)}}
+      const r=math.divide(y,x);
+      if(ratio===null)ratio=r;else if(!tol(r,ratio))return{s:'bad',m:why(a,b)};
+    }
+  }catch(e){return{s:'bad',m:'Cannot compare these lines'}}
+  if(a.eq&&ratio!==null&&cabs(ratio)<1e-9)return{s:'bad',m:why(a,b)};
+  return used?{s:'ok'}:{s:'bad',m:'Cannot compare these lines'};
+}
+
+/* ---- UI ---- */
+function renderPages(){
+  $('pages').innerHTML='';
+  S.pages.forEach((p,i)=>{const b=document.createElement('button');b.className='pg'+(i===S.cur?' cur':'');
+    b.textContent=p.title||'Untitled page';b.onclick=()=>{S.cur=i;save();renderAll()};$('pages').append(b)});
+}
+const FMT=/^(Cannot|Use one|Missing a side|Unbalanced|Write |Value is not|Limit|Integrand|This line isn)/;
+function guideFor(t){
+  if(/int\(|ev\(|\u222b/.test(t))return 'Integrals';
+  if(/lim\(/.test(t))return 'Limits';
+  if(/dy|d2|y'/.test(t))return 'Implicit differentiation';
+  if(/d\/d/.test(t))return 'Derivatives';
+  if(/sin|cos|tan|log|e\^/.test(t))return 'Functions';
+  return 'Basics';
+}
+function setMsg(msg,text,line){
+  msg.textContent=text||'';
+  if(text&&FMT.test(text)){
+    const b=document.createElement('button'),sec=guideFor(line);b.className='lk';b.textContent='See how to write this';
+    b.onmousedown=e=>e.preventDefault();b.onclick=()=>openGuide(sec);msg.append(' ',b);
+  }
+}
+function mark(i){
+  const r=$('lines').children[i];if(!r)return;
+  const L=P().lines,m=r.querySelector('.mark'),msg=r.querySelector('.msg');
+  m.textContent='';m.className='mark';msg.textContent='';
+  if(!L[i].trim())return;
+  if(((P().meta||[])[i]||{}).skip){m.textContent='\u21b3';m.className='mark skip';return}
+  let j=i-1;while(j>=0&&!L[j].trim())j--;
+  let c;
+  if(/d\/d[a-z]\s*\(|\b(int|lim)\s*\(/.test(L[i])&&L[i].split('=').length===2&&!(bareD(L[i].split('=')[0])&&bareD(L[i].split('=')[1]))){const q=L[i].split('=');c=check(q[0],q[1]);if(c.s==='bad'&&/line above|whole expression/.test(c.m))c.m=selfWhy(q[0],q[1])}
+  else if(j>=0)c=check(L[j],L[i]);
+  if(!c){if(!r.classList.contains('edit')&&toTeX(L[i])===null)setMsg(msg,"This line isn't valid maths yet.",L[i]);return}
+  m.textContent=c.s==='ok'?'✓':'✗';m.className='mark '+c.s;setMsg(msg,c.m,L[i]);
+}
+function renderLines(focus){
+  const box=$('lines');box.innerHTML='';
+  P().lines.forEach((t,i)=>{
+    const r=document.createElement('div');r.className='row';
+    r.innerHTML='<span class="mark"></span><div class="col"><input spellcheck="false" autocomplete="off" aria-label="Step"><div class="ts"></div></div><span class="msg"></span><span class="note"></span>';
+    const inp=r.querySelector('input'),ts=r.querySelector('.ts');inp.value=t;setTs(ts,t);r.querySelector('.note').textContent=((P().meta||[])[i]||{}).note||'';
+    inp.onfocus=()=>r.classList.add('edit');inp.onblur=()=>{r.classList.remove('edit');mark(i)};ts.onclick=()=>focusRow(i);
+    inp.oninput=()=>{P().lines[i]=inp.value;setTs(ts,inp.value);const mm=fixM();if(mm[i].note||mm[i].skip){mm[i]={};r.querySelector('.note').textContent=''}save();for(let k=i;k<Math.min(i+3,P().lines.length);k++)mark(k);placeSolve()};
+    inp.onkeydown=e=>{
+      if(e.key==='Enter'){e.preventDefault();fixM();P().meta.splice(i+1,0,{});P().lines.splice(i+1,0,'');save();renderLines(i+1)}
+      else if(e.key==='Backspace'&&!inp.value&&P().lines.length>1){e.preventDefault();fixM();P().meta.splice(i,1);P().lines.splice(i,1);save();renderLines(Math.max(0,i-1))}
+      else if(e.key==='ArrowUp'&&i>0)focusRow(i-1);
+      else if(e.key==='ArrowDown'&&i<P().lines.length-1)focusRow(i+1);
+    };
+    box.append(r);
+  });
+  P().lines.forEach((_,i)=>mark(i));
+  placeSolve();
+  if(focus!=null)focusRow(focus);
+}
+function renderAll(){
+  $('title').value=P().title;$('solvedIn').textContent='';$('impl').checked=!!P().implicit;renderPages();renderLines();
+}
+$('title').oninput=e=>{P().title=e.target.value;save();renderPages()};
+$('impl').onchange=e=>{P().implicit=e.target.checked;save();renderLines()};
+$('newPage').onclick=()=>{S.pages.push({title:'',lines:['']});S.cur=S.pages.length-1;save();renderAll();focusRow(0)};
+$('del').onclick=()=>{
+  if(!confirm('Delete this page?'))return;
+  S.pages.splice(S.cur,1);if(!S.pages.length)S.pages.push({title:'',lines:['']});
+  S.cur=Math.max(0,S.cur-1);save();renderAll();
+};
+
+/* ---- LaTeX export ---- */
+$('tex').onclick=()=>{
+  const L=P().lines.filter(l=>l.trim()).map(toTex);
+  $('out').value='\\begin{align*}\n'+L.map(l=>'  '+(l.includes('&=')?l:'&'+l)).join(' \\\\\n')+'\n\\end{align*}';
+  $('dlg').showModal();
+};
+$('copy').onclick=async()=>{try{await navigator.clipboard.writeText($('out').value)}catch(e){$('out').select()}};
+$('close').onclick=()=>$('dlg').close();
+
+if(S.cur>=S.pages.length)S.cur=0;
+renderAll();
+let mjTries=0;(function waitMJ(){if(window.MathJax&&MathJax.tex2svg)renderLines();else if(mjTries++<40)setTimeout(waitMJ,250)})();
+</script>
+</body>
+</html>
