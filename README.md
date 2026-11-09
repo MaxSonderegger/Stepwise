@@ -2,10 +2,6 @@
 
 A notebook that checks your maths line by line. Write each step of a solution on its own line. Stepwise checks it against the line above, explains what went wrong when a step is not equivalent, and can work out the rest of the solution for you.
 
-> Stepwise is an independent open-source project. It is not affiliated with or endorsed by Derive or Anthropic.
-
-**Live version:** `https://YOUR-USERNAME.github.io/stepwise/` (after you turn on GitHub Pages, see below)
-
 Everything lives in one file, `index.html`. There is no build step and no server.
 
 ## What it does
